@@ -1,0 +1,236 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  user
+  admin
+  counselor
+}
+
+enum UserPlan {
+  free
+  family
+  navigator
+}
+
+enum UserStatus {
+  active
+  inactive
+  flagged
+}
+
+model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  password_hash          String
+  full_name              String
+  phone                  String?
+  role                   UserRole  @default(user)
+  plan                   UserPlan  @default(free)
+  stripe_customer_id     String?
+  stripe_subscription_id String?
+  state                  String?
+  zip_code               String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+  last_active_at         DateTime  @default(now())
+  status                 UserStatus @default(active)
+
+  // Relations
+  family_profile         FamilyProfile?
+  eligibility_results    EligibilityResult[]
+  applications           Application[]       @relation("UserApplications")
+  assigned_applications  Application[]       @relation("AdminAssignedApplications")
+  documents              Document[]          @relation("UserDocuments")
+  verified_documents     Document[]          @relation("AdminVerifiedDocuments")
+  notifications          Notification[]
+  deadlines              Deadline[]
+  sessions_as_user       CounselorSession[]  @relation("UserSessions")
+  sessions_as_counselor  CounselorSession[]  @relation("CounselorSessions")
+  audit_logs             AuditLog[]
+
+  @@map("users")
+}
+
+model FamilyProfile {
+  id                String   @id @default(uuid())
+  user_id           String   @unique
+  user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  household_size    Int
+  num_children      Int
+  children_ages     Json     // JSON array of integers/numbers
+  monthly_income    Float
+  employment_status String
+  housing_status    String
+  has_disability    Boolean  @default(false)
+  is_pregnant       Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("family_profiles")
+}
+
+model BenefitProgram {
+  id                          String   @id @default(uuid())
+  name                        String
+  agency                      String
+  program_type                String
+  federal_or_state            String   // e.g. "federal" or "state"
+  state_code                  String?  // Nullable
+  description                 String
+  eligibility_criteria        Json     // JSON object describing criteria
+  estimated_monthly_value_min Float
+  estimated_monthly_value_max Float
+  application_url             String?
+  is_active                   Boolean  @default(true)
+
+  // Relations
+  eligibility_results         EligibilityResult[]
+  applications                Application[]
+
+  @@map("benefit_programs")
+}
+
+enum EligibilityStatus {
+  qualified
+  likely_qualified
+  check_required
+  not_qualified
+}
+
+model EligibilityResult {
+  id               String            @id @default(uuid())
+  user_id          String
+  user             User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  program_id       String
+  program          BenefitProgram    @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  status           EligibilityStatus
+  confidence_score Float             // 0-100
+  reasoning        String            @db.Text
+  checked_at       DateTime          @default(now())
+
+  @@unique([user_id, program_id])
+  @@map("eligibility_results")
+}
+
+enum ApplicationStatus {
+  draft
+  submitted
+  under_review
+  action_required
+  approved
+  rejected
+  withdrawn
+}
+
+enum ApplicationPriority {
+  normal
+  high
+  urgent
+}
+
+model Application {
+  id                String              @id @default(uuid())
+  user_id           String
+  user              User                @relation("UserApplications", fields: [user_id], references: [id], onDelete: Cascade)
+  program_id        String
+  program           BenefitProgram      @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  status            ApplicationStatus   @default(draft)
+  submitted_at      DateTime?
+  last_updated_at   DateTime            @default(now()) @updatedAt
+  notes             String?             @db.Text
+  assigned_admin_id String?
+  assigned_admin    User?               @relation("AdminAssignedApplications", fields: [assigned_admin_id], references: [id], onDelete: SetNull)
+  priority          ApplicationPriority @default(normal)
+
+  // Relations
+  documents         Document[]
+  notifications     Notification[]
+  deadlines         Deadline[]
+
+  @@map("applications")
+}
+
+model Document {
+  id             String       @id @default(uuid())
+  user_id        String
+  user           User         @relation("UserDocuments", fields: [user_id], references: [id], onDelete: Cascade)
+  application_id String?
+  application    Application? @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  document_type  String       // e.g. "birth_certificate", "proof_of_income"
+  file_name      String
+  file_url       String       // S3 URL
+  file_size      Int
+  mime_type      String
+  uploaded_at    DateTime     @default(now())
+  verified       Boolean      @default(false)
+  verified_by    String?
+  verifier       User?        @relation("AdminVerifiedDocuments", fields: [verified_by], references: [id], onDelete: SetNull)
+
+  @@map("documents")
+}
+
+model Notification {
+  id                     String       @id @default(uuid())
+  user_id                String
+  user                   User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type                   String       // deadline, status_update, document_required, system
+  title                  String
+  message                String       @db.Text
+  is_read                Boolean      @default(false)
+  created_at             DateTime     @default(now())
+  related_application_id String?
+  application            Application? @relation(fields: [related_application_id], references: [id], onDelete: SetNull)
+  action_url             String?
+
+  @@map("notifications")
+}
+
+model Deadline {
+  id               String      @id @default(uuid())
+  user_id          String
+  user             User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  application_id   String
+  application      Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  deadline_type    String      // renewal, document_upload, recertification
+  due_date         DateTime
+  reminder_sent_at DateTime?
+  is_completed     Boolean     @default(false)
+
+  @@map("deadlines")
+}
+
+model CounselorSession {
+  id               String   @id @default(uuid())
+  user_id          String
+  user             User     @relation("UserSessions", fields: [user_id], references: [id], onDelete: Cascade)
+  counselor_id     String
+  counselor        User     @relation("CounselorSessions", fields: [counselor_id], references: [id], onDelete: Cascade)
+  scheduled_at     DateTime
+  duration_minutes Int      @default(30)
+  status           String   // scheduled, completed, cancelled
+  notes            String?  @db.Text
+  meeting_url      String?
+
+  @@map("counselor_sessions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  admin_id    String
+  admin       User     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  action      String
+  target_type String
+  target_id   String
+  metadata    Json?
+  created_at  DateTime @default(now())
+
+  @@map("audit_logs")
+}
