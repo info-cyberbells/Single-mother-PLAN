@@ -7,6 +7,7 @@ export interface AuthUser {
   full_name: string;
   role: "user" | "admin" | "counselor";
   plan: "free" | "family" | "navigator";
+  phone?: string;
   state?: string;
   zip_code?: string;
   family_profile?: {
