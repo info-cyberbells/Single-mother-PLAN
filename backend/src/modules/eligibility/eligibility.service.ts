@@ -15,14 +15,14 @@ export class EligibilityService {
     // 1. Get user profile
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { profile: true },
+      include: { family_profile: true },
     });
 
-    if (!user || !user.profile) {
+    if (!user || !user.family_profile) {
       throw new Error('User profile not found. Please complete your profile first.');
     }
 
-    const profile = user.profile;
+    const profile = user.family_profile;
 
     // 2. Get all benefit programs
     const programs = await prisma.benefitProgram.findMany();
@@ -32,16 +32,16 @@ export class EligibilityService {
     const ruleResults = programs.map((p) => {
       const evaluation = rulesEngine.evaluate(p, {
         household_size: profile.household_size,
-        number_of_children: profile.number_of_children,
+        number_of_children: profile.num_children,
         children_ages: profile.children_ages as number[],
         monthly_income: profile.monthly_income,
         employment_status: profile.employment_status,
-        state: profile.state,
-        pregnancy_status: profile.pregnancy_status,
-        disability_status: profile.disability_status,
+        state: user.state,
+        pregnancy_status: profile.is_pregnant,
+        disability_status: profile.has_disability,
         housing_status: profile.housing_status,
-        student_status: profile.student_status,
-        citizenship_status: profile.citizenship_status,
+        student_status: profile.employment_status === 'student',
+        citizenship_status: 'US Citizen',
       });
       return { programId: p.id, ...evaluation };
     });
@@ -82,26 +82,24 @@ export class EligibilityService {
       const program = programs.find((p) => p.id === res.programId);
       if (!program) continue;
 
-      await prisma.eligibilityScan.upsert({
+      await prisma.eligibilityResult.upsert({
         where: {
-          userId_programId: {
-            userId,
-            programId: program.id,
+          user_id_program_id: {
+            user_id: userId,
+            program_id: program.id,
           },
         },
         update: {
           status: res.status,
           confidence_score: res.confidence_score || 0,
           reasoning: res.reasoning,
-          estimated_benefit: res.estimated_benefit || program.benefit,
         },
         create: {
-          userId,
-          programId: program.id,
+          user_id: userId,
+          program_id: program.id,
           status: res.status,
           confidence_score: res.confidence_score || 0,
           reasoning: res.reasoning,
-          estimated_benefit: res.estimated_benefit || program.benefit,
         },
       });
     }
@@ -125,19 +123,19 @@ export class EligibilityService {
   }
 
   async getResults(userId: string) {
-    return prisma.eligibilityScan.findMany({
-      where: { userId },
+    return prisma.eligibilityResult.findMany({
+      where: { user_id: userId },
       include: { program: true },
       orderBy: { confidence_score: 'desc' },
     });
   }
 
   async getResultByProgramId(userId: string, programId: string) {
-    return prisma.eligibilityScan.findUnique({
+    return prisma.eligibilityResult.findUnique({
       where: {
-        userId_programId: {
-          userId,
-          programId,
+        user_id_program_id: {
+          user_id: userId,
+          program_id: programId,
         },
       },
       include: { program: true },
