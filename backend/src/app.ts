@@ -24,9 +24,14 @@ const app: Application = express();
 app.use(helmet());
 
 // CORS Configured exclusively for frontend domain as specified
+const allowedOrigins = [
+  env.FRONTEND_URL.replace(/\/$/, ''),
+  env.ADMIN_FRONTEND_URL.replace(/\/$/, '')
+];
+
 app.use(
   cors({
-    origin: [env.FRONTEND_URL, env.ADMIN_FRONTEND_URL],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
