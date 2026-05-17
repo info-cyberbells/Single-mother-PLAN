@@ -63,6 +63,8 @@ model FamilyProfile {
   id                String   @id @default(uuid())
   user_id           String   @unique
   user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  // Base fields
   household_size    Int
   num_children      Int
   children_ages     Json     // JSON array of integers/numbers
@@ -71,6 +73,53 @@ model FamilyProfile {
   housing_status    String
   has_disability    Boolean  @default(false)
   is_pregnant       Boolean  @default(false)
+
+  // -- NEW FIELDS FROM WISER MOMS --
+  
+  // Personal & Location
+  date_of_birth          DateTime?
+  ssn_last_four          String?
+  preferred_language     String?
+  street_address         String?
+  apartment_suite        String?
+  city                   String?
+  state                  String?
+  zip_code               String?
+  
+  // Housing details
+  monthly_rent           Float?
+  utilities_separate     Boolean?
+  monthly_utilities      Float?
+  eviction_risk          Boolean?
+  
+  // Household details
+  marital_status         String?
+  other_adults           Boolean?
+  domestic_violence      Boolean?
+  
+  // Extended Income & Employment
+  income_sources         Json?    // Array of strings
+  work_situation         String?
+  employer_name          String?
+  other_earners          String?
+  savings_assets         String?
+  child_support_status   String?
+  
+  // Health & Childcare
+  health_insurance       String?
+  chronic_illness        Boolean?
+  yearly_medical_expense Float?
+  needs_childcare        Boolean?
+  childcare_preference   String?
+  childcare_provider     String?
+  monthly_childcare_cost Float?
+  
+  // Legal & Situational
+  immigration_status     String?
+  special_situations     Json?    // Array of strings
+  legal_issues           Json?    // Array of strings
+  urgency                String?
+
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 

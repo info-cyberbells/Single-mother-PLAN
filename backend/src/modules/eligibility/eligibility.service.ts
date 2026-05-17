@@ -36,12 +36,23 @@ export class EligibilityService {
         children_ages: profile.children_ages as number[],
         monthly_income: profile.monthly_income,
         employment_status: profile.employment_status,
-        state: user.state || '',
+        state: user.state || profile.state || '',
         pregnancy_status: profile.is_pregnant,
         disability_status: profile.has_disability,
         housing_status: profile.housing_status,
         student_status: profile.employment_status === 'student',
-        citizenship_status: 'US Citizen',
+        
+        // Map citizenship_status correctly (citizen or eligible_non_citizen)
+        citizenship_status: profile.immigration_status === 'citizen' || profile.immigration_status === 'eligible_non_citizen'
+          ? profile.immigration_status
+          : 'citizen',
+        
+        // Apply Wiser Moms eligibility fields
+        needs_childcare: profile.needs_childcare ?? undefined,
+        monthly_rent: profile.monthly_rent ?? undefined,
+        eviction_risk: profile.eviction_risk ?? undefined,
+        domestic_violence: profile.domestic_violence ?? undefined,
+        chronic_illness: profile.chronic_illness ?? undefined,
       });
       return { programId: p.id, ...evaluation };
     });

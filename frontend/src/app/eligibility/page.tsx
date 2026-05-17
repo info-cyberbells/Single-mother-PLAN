@@ -4,9 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Heart,
   ArrowLeft,
@@ -17,9 +14,18 @@ import {
   MapPin,
   Baby,
   Loader2,
+  Sparkles,
+  Home,
+  ShieldAlert,
+  Briefcase,
+  Calendar,
+  Languages,
+  Check,
+  Plus,
+  Minus,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { useAuthStore } from "@/store/auth.store";
 import { api } from "@/lib/api";
@@ -44,186 +50,205 @@ const US_STATES = [
   { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" },
 ];
 
-const EMPLOYMENT_OPTIONS = [
-  { value: "full_time", label: "Full-time employed" },
-  { value: "part_time", label: "Part-time employed" },
-  { value: "self_employed", label: "Self-employed" },
-  { value: "unemployed", label: "Currently unemployed" },
-  { value: "student", label: "Student" },
-  { value: "disabled", label: "Receiving disability benefits" },
-  { value: "retired", label: "Retired" },
+const INCOME_SOURCES_OPTIONS = [
+  { id: "Job or wages", label: "Job or wages" },
+  { id: "Self-employment", label: "Self-employment / freelance" },
+  { id: "Child support", label: "Child support" },
+  { id: "Alimony", label: "Alimony / spousal support" },
+  { id: "SSI", label: "Social Security or SSI" },
+  { id: "SSDI", label: "Disability (SSDI)" },
+  { id: "Unemployment", label: "Unemployment benefits" },
+  { id: "TANF", label: "TANF / cash assistance" },
+  { id: "No income", label: "No income right now" },
 ];
-
-const HOUSING_OPTIONS = [
-  { value: "renting", label: "Renting" },
-  { value: "owning", label: "Own my home" },
-  { value: "with_family", label: "Living with family" },
-  { value: "subsidized_housing", label: "Subsidized / Section 8 housing" },
-  { value: "homeless", label: "Experiencing homelessness" },
-];
-
-const eligibilitySchema = z.object({
-  household_size: z.string().min(1, "Required"),
-  num_children: z.string().min(1, "Required"),
-  monthly_income: z.string().min(1, "Required"),
-  state: z.string().min(1, "Required"),
-  employment_status: z.string().min(1, "Required"),
-  citizenship_status: z.string().min(1, "Required"),
-  housing_status: z.string().min(1, "Required"),
-  is_pregnant: z.boolean().optional(),
-  has_disability: z.boolean().optional(),
-});
-
-type EligibilityFormData = z.infer<typeof eligibilitySchema>;
-
-const steps = [
-  { id: 1, title: "Family Size", description: "Tell us about your household", icon: Users },
-  { id: 2, title: "Income", description: "Your household income info", icon: DollarSign },
-  { id: 3, title: "Location & Status", description: "State and citizenship details", icon: MapPin },
-  { id: 4, title: "Additional Info", description: "Final details for better matches", icon: Baby },
-];
-
-function ProgressBar({ current, total }: { current: number; total: number }) {
-  return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-2">
-        {steps.map((step) => (
-          <div
-            key={step.id}
-            className={`flex items-center gap-2 ${step.id < steps.length ? "flex-1" : ""}`}
-          >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                step.id < current
-                  ? "bg-emerald-500 text-white"
-                  : step.id === current
-                  ? "bg-gradient-primary text-white shadow-primary"
-                  : "bg-surface-container text-on-surface-variant"
-              }`}
-            >
-              {step.id < current ? (
-                <CheckCircle2 className="w-4.5 h-4.5" />
-              ) : (
-                step.id
-              )}
-            </div>
-            {step.id < steps.length && (
-              <div className="flex-1 h-0.5 mx-2">
-                <div
-                  className="h-full bg-gradient-primary rounded-full transition-all duration-500"
-                  style={{ width: step.id < current ? "100%" : "0%" }}
-                />
-                <div className="h-full bg-surface-container rounded-full -mt-0.5 -z-10 relative" />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between mt-2">
-        {steps.map((step) => (
-          <span
-            key={step.id}
-            className={`text-xs font-medium hidden sm:block ${
-              step.id === current ? "text-primary-600" : "text-on-surface-variant"
-            }`}
-            style={{ width: "25%" }}
-          >
-            {step.title}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function EligibilityPage() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [step, setStep] = useState(1);
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-    trigger,
-  } = useForm<EligibilityFormData>({
-    resolver: zodResolver(eligibilitySchema),
-    defaultValues: {
-      is_pregnant: false,
-      has_disability: false,
-    },
+  // Onboarding wizard friendly state
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    state: "GA",
+    zip_code: "",
+    preferred_language: "English",
+    housing_status: "renting",
+    monthly_income: "",
+    income_sources: [] as string[],
+    employment_status: "full_time",
+    household_size: 2,
+    num_children: 1,
+    children_birthdates: [] as string[],
+    has_disability: false,
+    is_pregnant: false,
+    marital_status: "single",
+    other_adults: false,
+    monthly_rent: "",
+    eviction_risk: false,
+    needs_childcare: false,
+    health_insurance: "none",
+    chronic_illness: false,
+    immigration_status: "citizen",
+    domestic_violence: false,
+    savings_assets: "none",
   });
 
-  const nextStep = async () => {
-    const fieldsPerStep: Record<number, (keyof EligibilityFormData)[]> = {
-      1: ["household_size", "num_children"],
-      2: ["monthly_income", "employment_status"],
-      3: ["state", "citizenship_status", "housing_status"],
-      4: [],
-    };
+  // Calculate dynamic steps description
+  const totalSteps = 8;
 
-    const valid = await trigger(fieldsPerStep[currentStep]);
-    if (valid) setCurrentStep((s) => Math.min(s + 1, 4));
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      // Adjust child birthdates array if number of kids changes
+      if (field === "num_children") {
+        const count = parseInt(value) || 0;
+        const currentDates = [...prev.children_birthdates];
+        if (currentDates.length < count) {
+          while (currentDates.length < count) {
+            currentDates.push("");
+          }
+        } else if (currentDates.length > count) {
+          currentDates.splice(count);
+        }
+        updated.children_birthdates = currentDates;
+      }
+      return updated;
+    });
   };
 
-  const onSubmit = async (data: EligibilityFormData) => {
-    setIsScanning(true);
+  const toggleIncomeSource = (source: string) => {
+    setFormData((prev) => {
+      let sources = [...prev.income_sources];
+      if (source === "No income") {
+        sources = ["No income"];
+      } else {
+        sources = sources.filter((s) => s !== "No income");
+        if (sources.includes(source)) {
+          sources = sources.filter((s) => s !== source);
+        } else {
+          sources.push(source);
+        }
+      }
+      return { ...prev, income_sources: sources };
+    });
+  };
 
+  const handleChildDobChange = (index: number, val: string) => {
+    setFormData((prev) => {
+      const dates = [...prev.children_birthdates];
+      dates[index] = val;
+      return { ...prev, children_birthdates: dates };
+    });
+  };
+
+  const canContinue = () => {
+    switch (step) {
+      case 1:
+        return formData.first_name.trim().length > 0 && formData.last_name.trim().length > 0;
+      case 2:
+        return formData.zip_code.trim().length >= 5;
+      case 5:
+        return formData.monthly_income.trim().length > 0;
+      default:
+        return true;
+    }
+  };
+
+  const runScan = async () => {
+    setIsScanning(true);
     try {
-      // Save/update family profile
-      await api.put("/api/user/profile", {
-        household_size: parseInt(data.household_size),
-        num_children: parseInt(data.num_children),
-        monthly_income: parseFloat(data.monthly_income),
-        employment_status: data.employment_status,
-        citizenship_status: data.citizenship_status === "yes",
-        housing_status: data.housing_status,
-        is_pregnant: data.is_pregnant,
-        has_disability: data.has_disability,
-        state: data.state,
+      // 1. Calculate children ages based on birthdays
+      const ages = formData.children_birthdates.map((dob) => {
+        if (!dob) return 2; // Default fallback age
+        const birth = new Date(dob);
+        const diff = Date.now() - birth.getTime();
+        const ageDate = new Date(diff);
+        return Math.max(0, Math.abs(ageDate.getUTCFullYear() - 1970));
       });
 
-      // Run AI eligibility scan
+      // 2. Put user profile API
+      await api.put("/api/user/profile", {
+        full_name: `${formData.first_name} ${formData.last_name}`,
+        state: formData.state,
+        zip_code: formData.zip_code,
+        household_size: formData.household_size,
+        num_children: formData.num_children,
+        children_ages: ages,
+        monthly_income: parseFloat(formData.monthly_income) || 0,
+        employment_status: formData.employment_status,
+        housing_status: formData.housing_status,
+        is_pregnant: formData.is_pregnant,
+        has_disability: formData.has_disability || formData.chronic_illness,
+        
+        // Wiser Moms fields
+        needs_childcare: formData.needs_childcare,
+        monthly_rent: parseFloat(formData.monthly_rent) || 0,
+        eviction_risk: formData.eviction_risk,
+        domestic_violence: formData.domestic_violence,
+        chronic_illness: formData.chronic_illness,
+        immigration_status: formData.immigration_status,
+        preferred_language: formData.preferred_language,
+        marital_status: formData.marital_status,
+        other_adults: formData.other_adults,
+        income_sources: formData.income_sources,
+        work_situation: formData.employment_status,
+        health_insurance: formData.health_insurance,
+        savings_assets: formData.savings_assets,
+      });
+
+      // 3. Trigger benefit match scan
       const scanRes = await api.post("/api/eligibility/scan");
       setResults(scanRes.data.data?.results || []);
       setScanComplete(true);
-    } catch (err: any) {
-      // If not authenticated, redirect to register
+    } catch (err) {
+      console.error("Benefit Scan Error:", err);
       if (!isAuthenticated) {
         router.push("/register?redirect=eligibility");
       }
-      console.error("Scan failed:", err);
     } finally {
       setIsScanning(false);
     }
   };
 
+  const nextStep = () => {
+    if (step < totalSteps) {
+      setStep((s) => s + 1);
+    } else {
+      runScan();
+    }
+  };
+
+  const prevStep = () => {
+    setStep((s) => Math.max(1, s - 1));
+  };
+
   if (isScanning) {
     return (
-      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
           <div className="relative mb-8">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-primary-lg mx-auto">
-              <Loader2 className="w-10 h-10 text-white animate-spin" />
+            <div className="w-24 h-24 rounded-3xl bg-gradient-primary flex items-center justify-center shadow-primary-lg mx-auto">
+              <Loader2 className="w-12 h-12 text-white animate-spin" />
             </div>
-            <div className="absolute inset-0 rounded-2xl bg-primary-500/20 blur-xl animate-pulse" />
+            <div className="absolute inset-0 rounded-3xl bg-primary-500/20 blur-2xl animate-pulse" />
           </div>
-          <h2 className="font-display font-bold text-2xl text-on-surface mb-2">
-            AI Eligibility Scan Running...
+          <h2 className="font-display font-bold text-3xl text-on-surface mb-3">
+            MomPlan Smart Scan
           </h2>
-          <p className="text-on-surface-variant">
-            Analyzing your profile against 200+ federal and state programs
+          <p className="text-on-surface-variant text-base mb-6 leading-relaxed">
+            Running eligibility equations against 200+ local, state, and national program criteria for <b>{formData.first_name}</b>...
           </p>
-          <div className="mt-6 flex justify-center gap-1">
+          <div className="flex justify-center gap-1.5">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-2.5 h-2.5 rounded-full bg-primary-500 animate-bounce"
-                style={{ animationDelay: `${i * 0.2}s` }}
+                className="w-3 h-3 rounded-full bg-primary-500 animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
               />
             ))}
           </div>
@@ -237,55 +262,62 @@ export default function EligibilityPage() {
       ["qualified", "likely_qualified"].includes(r.status)
     );
     return (
-      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4 pt-24 pb-16">
         <div className="max-w-2xl w-full text-center">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="mb-8"
           >
             <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg mx-auto mb-6">
-              <CheckCircle2 className="w-10 h-10 text-white" />
+              <CheckCircle2 className="w-11 h-11 text-white" />
             </div>
-            <h1 className="font-display font-bold text-3xl text-on-surface mb-2">
-              🎉 Great news, {qualified.length} programs matched!
+            <h1 className="font-display font-bold text-3xl lg:text-4xl text-on-surface mb-3">
+              🎉 Found matches for you, {formData.first_name}!
             </h1>
-            <p className="text-on-surface-variant">
-              Your family may qualify for these government benefits programs.
+            <p className="text-on-surface-variant text-base max-w-lg mx-auto">
+              Based on your details, your household qualifies or is likely qualified for **{qualified.length} benefit programs**.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-3 mb-8 text-left">
-            {qualified.slice(0, 4).map((result: any) => (
-              <Card key={result.id} padding="sm">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-medium text-sm text-on-surface">{result.program?.name}</div>
+          <div className="grid grid-cols-1 gap-4 mb-8 text-left">
+            {qualified.slice(0, 5).map((result: any) => (
+              <Card key={result.id} padding="md" className="border-emerald-100 hover:border-emerald-300 transition-all bg-emerald-50/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100/50 flex items-center justify-center text-emerald-600 shrink-0">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-base text-on-surface truncate">{result.program?.name}</div>
                     <div className="text-xs text-on-surface-variant">{result.program?.agency}</div>
                   </div>
-                  <div className="text-sm font-bold text-emerald-600">
-                    Up to ${result.program?.estimated_monthly_value_max || 0}/mo
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-black text-emerald-600">
+                      Up to ${result.program?.estimated_monthly_value_max || 0}/mo
+                    </div>
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider mt-1">
+                      {result.status.replace('_', ' ')}
+                    </span>
                   </div>
                 </div>
               </Card>
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isAuthenticated ? (
-              <Button size="lg" onClick={() => router.push("/dashboard/benefits")}>
-                View Full Results
-                <ArrowRight className="w-5 h-5" />
+              <Button size="lg" onClick={() => router.push("/dashboard/benefits")} className="bg-gradient-primary text-white font-bold px-8 shadow-primary">
+                View Full Matches & Apply
+                <ArrowRight className="w-5 h-5 ml-1" />
               </Button>
             ) : (
               <>
-                <Button size="lg" onClick={() => router.push("/register")}>
-                  Save My Results — Free
-                  <ArrowRight className="w-5 h-5" />
+                <Button size="lg" onClick={() => router.push("/register")} className="bg-gradient-primary text-white font-bold px-8 shadow-primary">
+                  Save My Match Profile
+                  <ArrowRight className="w-5 h-5 ml-1" />
                 </Button>
-                <Button variant="ghost" size="lg" onClick={() => router.push("/login")}>
-                  Sign In to Continue
+                <Button variant="ghost" size="lg" onClick={() => router.push("/login")} className="hover:bg-surface-container">
+                  Sign In to Access Dashboard
                 </Button>
               </>
             )}
@@ -296,231 +328,524 @@ export default function EligibilityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero pt-24 pb-16">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-primary-100/40 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-gradient-hero pt-24 pb-16 px-4">
+      {/* Glow Effects */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-rose-200/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-100/40 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <Link href="/" className="inline-flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center">
+      <div className="max-w-xl mx-auto">
+        {/* Navigation & Header */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-primary">
               <Heart className="w-5 h-5 text-white" fill="white" />
             </div>
-            <span className="font-display font-bold text-xl text-on-surface">
+            <span className="font-display font-black text-2xl text-on-surface">
               Mom<span className="text-gradient">Plan</span>
             </span>
           </Link>
-          <h1 className="font-display font-bold text-3xl text-on-surface mb-2">
-            Find Your Family Benefits
-          </h1>
-          <p className="text-on-surface-variant">
-            Takes less than 3 minutes • Completely free • No credit card
-          </p>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-100 text-xs font-bold text-rose-600 mb-2">
+            <Sparkles className="w-3.5 h-3.5" /> Conversational Match Assistant
+          </div>
         </div>
 
-        {/* Progress */}
-        <ProgressBar current={currentStep} total={steps.length} />
+        {/* Step Cards with Progress */}
+        <Card className="shadow-glass-lg relative overflow-hidden bg-surface/80 backdrop-blur-xl border border-outline-variant/20 p-6 md:p-8">
+          {/* Progress bar */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-surface-container-low">
+            <div
+              className="h-full bg-gradient-primary transition-all duration-500 rounded-r-full"
+              style={{ width: `${(step / totalSteps) * 100}%` }}
+            />
+          </div>
 
-        {/* Form Step */}
-        <Card padding="lg" className="shadow-glass-lg">
           <AnimatePresence mode="wait">
-            <motion.form
-              key={currentStep}
+            <motion.div
+              key={step}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.25 }}
-              onSubmit={handleSubmit(onSubmit)}
+              className="min-h-[300px] flex flex-col justify-between"
             >
-              {currentStep === 1 && (
+              {/* Step 1: Nice to meet you! */}
+              {step === 1 && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-on-surface mb-1">
-                      About Your Household
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      First, what is your name, mama?
                     </h2>
                     <p className="text-sm text-on-surface-variant">
-                      This helps us find the right programs for your family size.
+                      Let's personalize your program scanning.
                     </p>
                   </div>
-                  <Select
-                    label="Total household size"
-                    placeholder="Select..."
-                    error={errors.household_size?.message}
-                    options={Array.from({ length: 12 }, (_, i) => ({
-                      value: String(i + 1),
-                      label: `${i + 1} ${i === 0 ? "person" : "people"}`,
-                    }))}
-                    required
-                    {...register("household_size")}
-                  />
-                  <Select
-                    label="Number of children under 18"
-                    placeholder="Select..."
-                    error={errors.num_children?.message}
-                    options={Array.from({ length: 11 }, (_, i) => ({
-                      value: String(i),
-                      label: i === 0 ? "No children" : `${i} ${i === 1 ? "child" : "children"}`,
-                    }))}
-                    required
-                    {...register("num_children")}
-                  />
-                </div>
-              )}
-
-              {currentStep === 2 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-on-surface mb-1">
-                      Income & Employment
-                    </h2>
-                    <p className="text-sm text-on-surface-variant">
-                      Used only for eligibility matching — we never store unnecessarily.
-                    </p>
-                  </div>
-                  <Input
-                    label="Approximate monthly household income"
-                    type="number"
-                    placeholder="e.g. 3500"
-                    leftIcon={<DollarSign className="w-4 h-4" />}
-                    hint="Include all income sources (wages, child support, benefits)"
-                    error={errors.monthly_income?.message}
-                    required
-                    {...register("monthly_income")}
-                  />
-                  <Select
-                    label="Current employment status"
-                    placeholder="Select..."
-                    error={errors.employment_status?.message}
-                    options={EMPLOYMENT_OPTIONS}
-                    required
-                    {...register("employment_status")}
-                  />
-                </div>
-              )}
-
-              {currentStep === 3 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-on-surface mb-1">
-                      Location & Status
-                    </h2>
-                    <p className="text-sm text-on-surface-variant">
-                      Many programs vary significantly by state.
-                    </p>
-                  </div>
-                  <Select
-                    label="State of residence"
-                    placeholder="Select your state..."
-                    error={errors.state?.message}
-                    options={US_STATES}
-                    required
-                    {...register("state")}
-                  />
-                  <Select
-                    label="Citizenship / immigration status"
-                    placeholder="Select..."
-                    error={errors.citizenship_status?.message}
-                    options={[
-                      { value: "yes", label: "US Citizen or permanent resident" },
-                      { value: "no", label: "Non-citizen / visa holder" },
-                      { value: "daca", label: "DACA recipient" },
-                    ]}
-                    required
-                    {...register("citizenship_status")}
-                  />
-                  <Select
-                    label="Current housing status"
-                    placeholder="Select..."
-                    error={errors.housing_status?.message}
-                    options={HOUSING_OPTIONS}
-                    required
-                    {...register("housing_status")}
-                  />
-                </div>
-              )}
-
-              {currentStep === 4 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-on-surface mb-1">
-                      Additional Details
-                    </h2>
-                    <p className="text-sm text-on-surface-variant">
-                      These factors can unlock more program matches.
-                    </p>
-                  </div>
-
-                  <label className="flex items-start gap-3 p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 mt-0.5 rounded accent-primary-500"
-                      {...register("is_pregnant")}
-                    />
+                  <div className="space-y-4">
                     <div>
-                      <div className="font-medium text-sm text-on-surface">Currently pregnant</div>
-                      <div className="text-xs text-on-surface-variant mt-0.5">
-                        Unlocks WIC, Medicaid pregnancy coverage, and other prenatal programs
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">First Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Maria"
+                        value={formData.first_name}
+                        onChange={(e) => handleInputChange("first_name", e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Rodriguez"
+                        value={formData.last_name}
+                        onChange={(e) => handleInputChange("last_name", e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Language & Location */}
+              {step === 2 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Nice to meet you, {formData.first_name}! 🌟 Where do you live?
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Benefits vary heavily by state and regional zip codes.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">State</label>
+                        <select
+                          value={formData.state}
+                          onChange={(e) => handleInputChange("state", e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                        >
+                          {US_STATES.map((s) => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Zip Code</label>
+                        <input
+                          type="text"
+                          maxLength={5}
+                          placeholder="e.g. 30303"
+                          value={formData.zip_code}
+                          onChange={(e) => handleInputChange("zip_code", e.target.value.replace(/\D/g, ""))}
+                          className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                        />
                       </div>
                     </div>
-                  </label>
 
-                  <label className="flex items-start gap-3 p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 mt-0.5 rounded accent-primary-500"
-                      {...register("has_disability")}
-                    />
                     <div>
-                      <div className="font-medium text-sm text-on-surface">
-                        Have a disability or family member with disability
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Preferred Language</label>
+                      <select
+                        value={formData.preferred_language}
+                        onChange={(e) => handleInputChange("preferred_language", e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                      >
+                        <option value="English">English</option>
+                        <option value="Spanish">Español (Spanish)</option>
+                        <option value="Vietnamese">Tiếng Việt (Vietnamese)</option>
+                        <option value="Chinese">中文 (Chinese)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Household Setup */}
+              {step === 3 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Tell us about your household size
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Household size includes yourself, children, and any other adults living with you.
+                    </p>
+                  </div>
+                  <div className="space-y-6">
+                    {/* Household Size Counter */}
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+                      <div>
+                        <div className="font-bold text-base text-on-surface">Total Household Size</div>
+                        <div className="text-xs text-on-surface-variant">Including you</div>
                       </div>
-                      <div className="text-xs text-on-surface-variant mt-0.5">
-                        Includes SSI, SSDI, and state disability assistance programs
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          disabled={formData.household_size <= 1}
+                          onClick={() => handleInputChange("household_size", formData.household_size - 1)}
+                          className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-lg font-bold hover:bg-surface-container disabled:opacity-40"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="font-display font-black text-xl text-on-surface w-6 text-center">{formData.household_size}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange("household_size", formData.household_size + 1)}
+                          className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-lg font-bold hover:bg-surface-container"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                  </label>
 
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-primary-50 border border-primary-200">
-                    <CheckCircle2 className="w-4 h-4 text-primary-600 shrink-0" />
-                    <p className="text-xs text-primary-700">
-                      Your data is encrypted and never shared. We use it only to match you with eligible programs.
+                    {/* Children Counter */}
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+                      <div>
+                        <div className="font-bold text-base text-on-surface">Children under 18</div>
+                        <div className="text-xs text-on-surface-variant">Living with you</div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          disabled={formData.num_children <= 0}
+                          onClick={() => handleInputChange("num_children", formData.num_children - 1)}
+                          className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-lg font-bold hover:bg-surface-container disabled:opacity-40"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="font-display font-black text-xl text-on-surface w-6 text-center">{formData.num_children}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange("num_children", formData.num_children + 1)}
+                          className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-lg font-bold hover:bg-surface-container"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Pregnant Checkbox */}
+                    <label className="flex items-start gap-4 p-4 rounded-2xl border border-outline-variant/30 bg-rose-50/20 hover:bg-rose-50/40 cursor-pointer transition-all">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_pregnant}
+                        onChange={(e) => handleInputChange("is_pregnant", e.target.checked)}
+                        className="w-5 h-5 mt-0.5 rounded accent-rose-500 shrink-0"
+                      />
+                      <div>
+                        <div className="font-bold text-sm text-rose-800">Are you currently pregnant?</div>
+                        <div className="text-xs text-rose-700/80 mt-0.5">
+                          Highly important! Unlocks specific WIC nutrition packages and Medicaid pregnancy waivers.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Kids birthdates */}
+              {step === 4 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      When were your children born?
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Child care programs like Georgia CAPS and PeachCare require child birthdates to verify eligibility.
                     </p>
+                  </div>
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                    {formData.num_children === 0 ? (
+                      <div className="text-center py-6 text-on-surface-variant text-sm font-medium">
+                        No children under 18 in household. You can proceed directly.
+                      </div>
+                    ) : (
+                      Array.from({ length: formData.num_children }).map((_, i) => (
+                        <div key={i} className="p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low">
+                          <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">
+                            Child {i + 1} Birthdate
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="date"
+                              value={formData.children_birthdates[i] || ""}
+                              onChange={(e) => handleChildDobChange(i, e.target.value)}
+                              className="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Income & Work */}
+              {step === 5 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Let's look at household income
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      What is your total monthly household income before taxes? (wages, child support, assistance etc.)
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant font-bold text-lg">
+                        $
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="e.g. 2800"
+                        value={formData.monthly_income}
+                        onChange={(e) => handleInputChange("monthly_income", e.target.value)}
+                        className="w-full pl-10 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-lg transition-all font-black text-on-surface"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Work Situation</label>
+                      <select
+                        value={formData.employment_status}
+                        onChange={(e) => handleInputChange("employment_status", e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                      >
+                        <option value="full_time">Employed Full-time</option>
+                        <option value="part_time">Employed Part-time</option>
+                        <option value="self_employed">Self-employed / Freelance</option>
+                        <option value="unemployed">Currently Unemployed</option>
+                        <option value="student">Active Student</option>
+                        <option value="disabled">Receiving Disability Assistance</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 6: Income Sources */}
+              {step === 6 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Where does your income come from?
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Tap all categories that apply to your household.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-1">
+                    {INCOME_SOURCES_OPTIONS.map((option) => {
+                      const active = formData.income_sources.includes(option.id);
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => toggleIncomeSource(option.id)}
+                          className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                            active
+                              ? "bg-rose-50 border-rose-400 text-rose-900 shadow-sm scale-[0.98]"
+                              : "bg-surface-container-low border-outline-variant/30 text-on-surface hover:bg-surface-container"
+                          }`}
+                        >
+                          <span className="text-sm font-bold">{option.label}</span>
+                          {active && (
+                            <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center text-white shrink-0">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 7: Housing Setup */}
+              {step === 7 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Tell us about your home setup
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Evaluates housing assistance (Section 8) and emergency relief program eligibility.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Housing Situation</label>
+                      <select
+                        value={formData.housing_status}
+                        onChange={(e) => handleInputChange("housing_status", e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                      >
+                        <option value="renting">Renting an apartment/home</option>
+                        <option value="owning">Owning a home</option>
+                        <option value="with_family">Living with family/friends</option>
+                        <option value="subsidized_housing">Subsidized / Section 8 Housing</option>
+                        <option value="homeless">Experiencing homelessness / temporary shelter</option>
+                      </select>
+                    </div>
+
+                    {formData.housing_status === "renting" && (
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Monthly Rent Contribution</label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant font-bold">$</span>
+                          <input
+                            type="number"
+                            placeholder="e.g. 1100"
+                            value={formData.monthly_rent}
+                            onChange={(e) => handleInputChange("monthly_rent", e.target.value)}
+                            className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="flex items-start gap-4 p-3.5 rounded-xl border border-outline-variant/30 bg-amber-50/20 hover:bg-amber-50/40 cursor-pointer transition-all">
+                      <input
+                        type="checkbox"
+                        checked={formData.eviction_risk}
+                        onChange={(e) => handleInputChange("eviction_risk", e.target.checked)}
+                        className="w-5 h-5 mt-0.5 rounded accent-amber-500 shrink-0"
+                      />
+                      <div>
+                        <div className="font-bold text-sm text-amber-800 flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" /> Immediate eviction risk?
+                        </div>
+                        <div className="text-xs text-amber-700/80 mt-0.5">
+                          Select this if you have received an eviction notice. Bypasses general queues for rapid housing vouchers.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 8: Safety & Health Checks */}
+              {step === 8 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Special situations & assistance
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Critical factors used to trigger specific child care subsidies, health assistance, and safety support.
+                    </p>
+                  </div>
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    {/* Needs Childcare Check */}
+                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formData.needs_childcare}
+                        onChange={(e) => handleInputChange("needs_childcare", e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded accent-primary-500 shrink-0"
+                      />
+                      <div>
+                        <div className="font-bold text-sm text-on-surface">Do you need childcare assistance?</div>
+                        <div className="text-xs text-on-surface-variant mt-0.5">
+                          For working or student moms needing help paying for daycare or afterschool programs.
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Chronic Illness Check */}
+                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formData.chronic_illness}
+                        onChange={(e) => handleInputChange("chronic_illness", e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded accent-primary-500 shrink-0"
+                      />
+                      <div>
+                        <div className="font-bold text-sm text-on-surface">Chronic illness or disability?</div>
+                        <div className="text-xs text-on-surface-variant mt-0.5">
+                          Checks medical expense deductions and matches specialized healthcare assistance.
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Domestic Violence Safe Check */}
+                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-red-50/20 hover:bg-red-50/40 cursor-pointer transition-all">
+                      <input
+                        type="checkbox"
+                        checked={formData.domestic_violence}
+                        onChange={(e) => handleInputChange("domestic_violence", e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded accent-red-500 shrink-0"
+                      />
+                      <div>
+                        <div className="font-bold text-sm text-red-800 flex items-center gap-1">
+                          <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" /> Safety & domestic abuse support?
+                        </div>
+                        <div className="text-xs text-red-700/80 mt-0.5">
+                          Triggers safe housing, emergency food vouchers, and immediate legal protection services.
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Citizenship check */}
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Citizenship / Immigration Status</label>
+                      <select
+                        value={formData.immigration_status}
+                        onChange={(e) => handleInputChange("immigration_status", e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
+                      >
+                        <option value="citizen">US Citizen</option>
+                        <option value="eligible_non_citizen">Permanent Resident (Green Card) / Eligible Non-Citizen</option>
+                        <option value="daca">DACA Recipient</option>
+                        <option value="visa_holder">Other Visa Holder / Non-Citizen</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Navigation buttons */}
-              <div className={`flex gap-3 mt-8 ${currentStep > 1 ? "justify-between" : "justify-end"}`}>
-                {currentStep > 1 && (
-                  <Button
+              <div className="flex gap-4 mt-8 pt-6 border-t border-outline-variant/10 justify-between items-center">
+                {step > 1 ? (
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="md"
-                    onClick={() => setCurrentStep((s) => s - 1)}
+                    onClick={prevStep}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back
-                  </Button>
+                  </button>
+                ) : (
+                  <div />
                 )}
 
-                {currentStep < 4 ? (
-                  <Button type="button" size="md" onClick={nextStep}>
-                    Continue
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                ) : (
-                  <Button type="submit" size="lg" className="px-10">
-                    Run Eligibility Scan
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  size="md"
+                  disabled={!canContinue()}
+                  onClick={nextStep}
+                  className="bg-gradient-primary text-white font-bold px-6 shadow-primary disabled:opacity-50"
+                >
+                  {step === totalSteps ? (
+                    <>
+                      Run Smart Match
+                      <Sparkles className="w-4 h-4 ml-1.5" />
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </>
+                  )}
+                </Button>
               </div>
-            </motion.form>
+            </motion.div>
           </AnimatePresence>
         </Card>
 
-        <p className="text-center text-xs text-on-surface-variant mt-6 opacity-70">
-          Step {currentStep} of {steps.length} • Free scan, no credit card required
+        {/* Informative Security Footer */}
+        <p className="text-center text-[10px] text-on-surface-variant/80 mt-6 max-w-sm mx-auto leading-relaxed">
+          Step {step} of {totalSteps} • Your answers are encrypted and strictly secure. We use this information solely to verify eligibility equations under US Code standards.
         </p>
       </div>
     </div>

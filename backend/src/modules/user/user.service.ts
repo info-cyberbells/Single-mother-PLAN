@@ -36,7 +36,13 @@ export class UserService {
     const { 
       full_name, phone, state, zip_code,
       household_size, num_children, children_ages, monthly_income,
-      employment_status, housing_status, has_disability, is_pregnant
+      employment_status, housing_status, has_disability, is_pregnant,
+      
+      // New Wiser Moms fields
+      needs_childcare, monthly_rent, eviction_risk, domestic_violence,
+      chronic_illness, immigration_status, date_of_birth, preferred_language,
+      marital_status, other_adults, income_sources, work_situation,
+      health_insurance, savings_assets, child_support_status
     } = data;
 
     // Update User basic info
@@ -55,10 +61,16 @@ export class UserService {
     // Update Family Profile if any family fields are present
     const hasFamilyData = [
       household_size, num_children, monthly_income, 
-      employment_status, housing_status, has_disability, is_pregnant
+      employment_status, housing_status, has_disability, is_pregnant,
+      needs_childcare, monthly_rent, eviction_risk, domestic_violence,
+      chronic_illness, immigration_status, date_of_birth, preferred_language,
+      marital_status, other_adults, income_sources, work_situation,
+      health_insurance, savings_assets, child_support_status
     ].some(val => val !== undefined);
 
     if (hasFamilyData) {
+      const parsedDob = date_of_birth ? new Date(date_of_birth) : undefined;
+
       await prisma.familyProfile.upsert({
         where: { user_id: userId },
         create: {
@@ -71,6 +83,22 @@ export class UserService {
           housing_status: housing_status || 'renting',
           has_disability: has_disability || false,
           is_pregnant: is_pregnant || false,
+          
+          needs_childcare: needs_childcare || false,
+          monthly_rent: monthly_rent || 0,
+          eviction_risk: eviction_risk || false,
+          domestic_violence: domestic_violence || false,
+          chronic_illness: chronic_illness || false,
+          immigration_status: immigration_status || 'citizen',
+          date_of_birth: parsedDob,
+          preferred_language: preferred_language || 'English',
+          marital_status: marital_status || 'single',
+          other_adults: other_adults || false,
+          income_sources: income_sources || [],
+          work_situation: work_situation || '',
+          health_insurance: health_insurance || '',
+          savings_assets: savings_assets || '',
+          child_support_status: child_support_status || 'none',
         },
         update: {
           ...(household_size !== undefined && { household_size }),
@@ -81,6 +109,22 @@ export class UserService {
           ...(housing_status !== undefined && { housing_status }),
           ...(has_disability !== undefined && { has_disability }),
           ...(is_pregnant !== undefined && { is_pregnant }),
+          
+          ...(needs_childcare !== undefined && { needs_childcare }),
+          ...(monthly_rent !== undefined && { monthly_rent }),
+          ...(eviction_risk !== undefined && { eviction_risk }),
+          ...(domestic_violence !== undefined && { domestic_violence }),
+          ...(chronic_illness !== undefined && { chronic_illness }),
+          ...(immigration_status !== undefined && { immigration_status }),
+          ...(date_of_birth !== undefined && { date_of_birth: parsedDob }),
+          ...(preferred_language !== undefined && { preferred_language }),
+          ...(marital_status !== undefined && { marital_status }),
+          ...(other_adults !== undefined && { other_adults }),
+          ...(income_sources !== undefined && { income_sources }),
+          ...(work_situation !== undefined && { work_situation }),
+          ...(health_insurance !== undefined && { health_insurance }),
+          ...(savings_assets !== undefined && { savings_assets }),
+          ...(child_support_status !== undefined && { child_support_status }),
         }
       });
     }

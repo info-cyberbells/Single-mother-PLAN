@@ -11,6 +11,13 @@ export interface RuleContext {
   housing_status: string;
   student_status: boolean;
   citizenship_status: string;
+  
+  // New from Wiser Moms
+  needs_childcare?: boolean;
+  monthly_rent?: number;
+  eviction_risk?: boolean;
+  domestic_violence?: boolean;
+  chronic_illness?: boolean;
 }
 
 export interface ProgramMetadata {
@@ -27,6 +34,11 @@ export interface ProgramMetadata {
   requires_citizenship?: boolean;
   specific_states?: string[];
   requires_housing_instability?: boolean;
+  
+  // New from Wiser Moms
+  requires_childcare_need?: boolean;
+  supports_domestic_violence?: boolean;
+  supports_eviction_risk?: boolean;
 }
 
 export class RulesEngine {
@@ -152,6 +164,29 @@ export class RulesEngine {
         score -= 20;
         reasons.push('Program specifically targets individuals with housing instability.');
       }
+    }
+
+    // 9. Childcare Need
+    if (meta.requires_childcare_need) {
+      if (context.needs_childcare) {
+        score += 20;
+        reasons.push('Program supports families needing childcare.');
+      } else {
+        score -= 20;
+        reasons.push('Program is specifically for families needing childcare assistance.');
+      }
+    }
+
+    // 10. Domestic Violence
+    if (meta.supports_domestic_violence && context.domestic_violence) {
+      score += 25;
+      reasons.push('Priority support given for domestic violence survivors.');
+    }
+
+    // 11. Eviction Risk
+    if (meta.supports_eviction_risk && context.eviction_risk) {
+      score += 25;
+      reasons.push('Priority given due to immediate eviction risk.');
     }
 
     // Normalize score

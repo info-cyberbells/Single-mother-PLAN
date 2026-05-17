@@ -16,6 +16,23 @@ export const updateProfileSchema = z.object({
     has_disability: z.boolean().optional(),
     is_pregnant: z.boolean().optional(),
     citizenship_status: z.boolean().optional(),
+    
+    // New Wiser Moms fields
+    needs_childcare: z.boolean().optional(),
+    monthly_rent: z.number().min(0).optional(),
+    eviction_risk: z.boolean().optional(),
+    domestic_violence: z.boolean().optional(),
+    chronic_illness: z.boolean().optional(),
+    immigration_status: z.string().optional(),
+    date_of_birth: z.string().optional(), // ISO string or format
+    preferred_language: z.string().optional(),
+    marital_status: z.string().optional(),
+    other_adults: z.boolean().optional(),
+    income_sources: z.array(z.string()).optional(),
+    work_situation: z.string().optional(),
+    health_insurance: z.string().optional(),
+    savings_assets: z.string().optional(),
+    child_support_status: z.string().optional(),
   }),
 });
 
