@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma';
+import { sendEmail } from '../../config/email';
 
 /**
  * Government Contact Ingestion & Caching Strategy
@@ -129,6 +130,64 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
     if (newStatus === 'submitted') {
       // Future: automatically generate email composition and queue it for review
       console.log(`[Automation] Queuing async review tasks for submitted application.`);
+    }
+  }
+
+  /**
+   * TASK 8: Process Application (Sync replacement for BullMQ)
+   */
+  async processApplication(applicationId: string, userId: string) {
+    console.log(`[Worker] Processing Apply Now for application: ${applicationId}`);
+
+    try {
+      // 1. Compose email (this will fetch contact, prepare payload, and use AI to generate email)
+      const emailData = await this.composeApplicationEmail(applicationId, userId);
+
+      // 2. Attach documents and send email
+      await sendEmail({
+        to: emailData.to,
+        subject: emailData.subject,
+        html: emailData.body,
+        attachments: emailData.attachments.map((att: any) => ({
+          filename: att.filename,
+          path: att.url, // Resend accepts remote URLs using 'path'
+        }))
+      });
+
+      // 3. Update application tracking status
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { status: 'submitted', submitted_at: new Date() },
+      });
+
+      // 4. Notify user
+      await prisma.notification.create({
+        data: {
+          user_id: userId,
+          type: 'status_update',
+          title: 'Application Submitted',
+          message: `Your application has been successfully submitted to the agency.`,
+          related_application_id: applicationId,
+        },
+      });
+
+      console.log(`[Worker] Successfully processed Apply Now for application: ${applicationId}`);
+    } catch (error: any) {
+      console.error(`[Worker] Failed to process application ${applicationId}:`, error);
+      
+      // Create an error notification
+      await prisma.notification.create({
+        data: {
+          user_id: userId,
+          type: 'system',
+          title: 'Application Submission Failed',
+          message: `We encountered an error submitting your application. Our team has been notified. Error: ${error.message}`,
+          related_application_id: applicationId,
+        },
+      });
+      
+      // Optionally rethrow if you want the API to fail immediately
+      // throw error; 
     }
   }
 }

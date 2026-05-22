@@ -5,9 +5,6 @@ import { runRenewalCheckTask } from './workers/renewalCheck.worker';
 
 export const startBackgroundScheduler = async (): Promise<void> => {
   try {
-    // Initialize BullMQ worker for Apply Now automation
-    require('../modules/automation/automation.queue');
-    
     console.log('⚙️ Initializing repeatable background tasks scheduler (In-Memory JS mode)...');
 
     // Safe Hourly Ticks: Check every hour (3,600,000ms)
