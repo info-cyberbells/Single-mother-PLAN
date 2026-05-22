@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
 
 export default function ApplicationsPage() {
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState("all");
   const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [activeApp, setActiveApp] = useState<any>(null);
