@@ -42,54 +42,79 @@ export class AutomationService {
 
   /**
    * TASK 6: Prepares a composed email draft for a specific application.
-   * Finds the correct contact, generates a templated body, and prepares document attachments.
+   * Finds the correct contact, generates a templated body using AI, and prepares document attachments.
    */
   async composeApplicationEmail(applicationId: string, userId: string) {
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
       include: {
         program: true,
-        user: true,
-        documents: {
-          where: { verified: true } // Only attach verified documents
-        }
+        user: { include: { family_profile: true } },
+        documents: true
       }
     });
 
-    if (!application) {
-      throw new Error('Application not found');
+    if (!application || !application.user.family_profile) {
+      throw new Error('Application or complete user profile not found');
     }
 
-    // Determine target contact
+    // 1. Verify Eligibility
+    const eligibilityResult = await prisma.eligibilityResult.findUnique({
+      where: {
+        user_id_program_id: { user_id: userId, program_id: application.program_id }
+      }
+    });
+
+    if (!eligibilityResult || (eligibilityResult.status !== 'qualified' && eligibilityResult.status !== 'likely_qualified')) {
+      throw new Error('User is not fully qualified for this program. Cannot automate application.');
+    }
+
+    // 2. Determine target contact
     const state = application.user.state || 'National';
     const contacts = this.contactCache.get(`${state}-${application.program.agency}`) || [];
     const primaryContact = contacts.length > 0 ? contacts[0].email : 'support@agency.gov'; // Fallback
 
-    // Compose templated email
-    const subject = `Application Submission: ${application.program.name} - ${application.user.full_name}`;
-    
-    let body = `Dear ${application.program.agency} Representative,\n\n`;
-    body += `Please find the application submission for ${application.user.full_name}.\n`;
-    body += `Program: ${application.program.name}\n\n`;
-    
-    if (application.documents.length > 0) {
-      body += `Attached are ${application.documents.length} verified supporting documents:\n`;
-      application.documents.forEach(doc => {
-        body += `- ${doc.file_name} (${doc.document_type})\n`;
-      });
-    } else {
-      body += `No supporting documents have been verified for this application yet.\n`;
+    // 3. Compose email via Anthropic AI (acting as OpenAI substitute as per existing arch)
+    const { callClaudeApi } = require('../../config/anthropic');
+    const systemPrompt = `You are an automated government application assistant.
+Your task is to draft a formal, professional email to a government agency representative on behalf of an applicant.
+Do not include any placeholder brackets like [Name] in your final output, use the provided data.
+Keep the email structured, clear, and focused on application submission.`;
+
+    const userPrompt = `Draft an application submission email for ${application.user.full_name} applying to ${application.program.name}.
+Agency: ${application.program.agency}
+Applicant Profile:
+- Household Size: ${application.user.family_profile.household_size}
+- Income: $${application.user.family_profile.monthly_income}/month
+- Address: ${application.user.family_profile.city}, ${application.user.state}
+- Documents Attached: ${application.documents.length > 0 ? application.documents.map(d => d.display_name).join(', ') : 'None'}
+
+The email should be ready to send as-is. End with "MomPlan Automations System" as the sender.`;
+
+    let generatedBody = '';
+    try {
+      generatedBody = await callClaudeApi(systemPrompt, userPrompt);
+    } catch (err) {
+      console.error('Failed to generate AI email, falling back to template', err);
+      // Fallback
+      generatedBody = `Dear ${application.program.agency} Representative,\n\n`;
+      generatedBody += `Please find the application submission for ${application.user.full_name}.\n`;
+      generatedBody += `Program: ${application.program.name}\n\n`;
+      if (application.documents.length > 0) {
+        generatedBody += `Attached are ${application.documents.length} supporting documents.\n`;
+      }
+      generatedBody += `\nThank you,\nMomPlan Automations System`;
     }
-    
-    body += `\nThank you,\nMomPlan Automations System`;
+
+    const subject = `Application Submission: ${application.program.name} - ${application.user.full_name}`;
 
     return {
       to: primaryContact,
       subject,
-      body,
+      body: generatedBody,
       attachments: application.documents.map(doc => ({
-        filename: doc.file_name,
-        url: doc.file_url, // URL or local path to attach
+        filename: doc.display_name,
+        url: doc.file_url, // S3 URL to attach
         mimeType: doc.mime_type
       }))
     };

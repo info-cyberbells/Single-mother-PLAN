@@ -24,12 +24,11 @@ router.get('/:id/download', validate(documentIdParamSchema), documentsController
 router.get('/:id', validate(documentIdParamSchema), documentsController.getDocumentById);
 router.delete('/:id', validate(documentIdParamSchema), documentsController.deleteDocument);
 
-// Admin/Counselor verification endpoint
-router.put(
-  '/:id/verify',
-  authorizeRoles('admin', 'counselor'),
+// Rename endpoint
+router.patch(
+  '/:id/rename',
   validate(documentIdParamSchema),
-  documentsController.verifyDocument
+  documentsController.renameDocument
 );
 
 export default router;

@@ -59,4 +59,31 @@ export class ApplicationsController {
       next(error);
     }
   }
+
+  async applyApplication(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      // Import here to avoid circular dependency if needed, or import at the top
+      const { automationService } = require('../automation/automation.service');
+      const { applyNowQueue } = require('../automation/automation.queue');
+
+      // Add to async queue
+      await applyNowQueue.add('process-application', {
+        applicationId: req.params.id,
+        userId: req.user.id
+      });
+
+      // Update local status to under_review or action_required immediately to show progress
+      const application = await applicationsService.updateApplication(
+        req.params.id,
+        req.user.id,
+        req.user.role,
+        { status: 'under_review', notes: 'Automated application submission queued.' }
+      );
+
+      res.status(200).json({ success: true, message: 'Application queued for processing', data: application });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

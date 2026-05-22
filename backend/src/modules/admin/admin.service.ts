@@ -220,18 +220,16 @@ export class AdminService {
   }
 
   async getAnalyticsOverview() {
-    const [totalUsers, totalApplications, pendingReviews, verifiedDocuments] = await Promise.all([
+    const [totalUsers, totalApplications, pendingReviews] = await Promise.all([
       prisma.user.count({ where: { role: 'user' } }),
       prisma.application.count(),
       prisma.application.count({ where: { status: 'under_review' } }),
-      prisma.document.count({ where: { verified: true } }),
     ]);
 
     return {
       totalUsers,
       totalApplications,
       pendingReviews,
-      verifiedDocuments,
     };
   }
 

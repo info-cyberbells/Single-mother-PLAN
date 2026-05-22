@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Upload, FileText, CheckCircle, XCircle, Loader2, Trash2, Eye, Clock } from "lucide-react";
+import { Upload, FileText, CheckCircle, XCircle, Loader2, Trash2, Eye, Clock, Edit2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -15,6 +15,8 @@ export default function DocumentsPage() {
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ["documents"],
@@ -58,6 +60,22 @@ export default function DocumentsPage() {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
       console.error("Failed to view document", err);
+    }
+  };
+
+  const handleRename = async (id: string) => {
+    if (!newName.trim()) {
+      setRenamingId(null);
+      return;
+    }
+    try {
+      await api.patch(`/api/documents/${id}/rename`, { name: newName });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (err) {
+      console.error("Failed to rename document", err);
+    } finally {
+      setRenamingId(null);
+      setNewName("");
     }
   };
 
@@ -163,27 +181,54 @@ export default function DocumentsPage() {
                     {docTypeIcons[doc.document_type] || "📄"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-on-surface truncate">
-                      {doc.file_name}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                    {renamingId === doc.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          className="flex-1 h-8 px-2 text-sm border border-surface-container-highest rounded bg-surface focus:outline-none focus:border-primary-500"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRename(doc.id);
+                            if (e.key === "Escape") setRenamingId(null);
+                          }}
+                        />
+                        <button
+                          onClick={() => handleRename(doc.id)}
+                          className="text-xs font-medium text-primary-600 hover:text-primary-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setRenamingId(null)}
+                          className="text-xs font-medium text-on-surface-variant hover:text-on-surface"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="font-medium text-sm text-on-surface truncate flex items-center gap-2 group">
+                        {doc.display_name}
+                        <button
+                          onClick={() => {
+                            setRenamingId(doc.id);
+                            setNewName(doc.display_name);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary-500 transition-all"
+                          title="Rename Document"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
                       <span className="capitalize">{doc.document_type}</span>
                       <span>•</span>
                       <span>{formatDate(doc.uploaded_at)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {doc.verified ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
-                        <Clock className="w-3.5 h-3.5" />
-                        Pending Verification
-                      </span>
-                    )}
                     <button
                       onClick={() => handleViewDocument(doc.id, doc.mime_type)}
                       title="View Document"

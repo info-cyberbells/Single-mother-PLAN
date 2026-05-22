@@ -84,11 +84,11 @@ export class DocumentsService {
         user_id: userId,
         application_id: data.application_id || null,
         document_type: data.document_type,
-        file_name: file.originalname,
+        original_file_name: file.originalname,
+        display_name: file.originalname,
         file_url,
         file_size: file.size,
         mime_type: file.mimetype,
-        verified: false,
       },
     });
 
@@ -107,7 +107,7 @@ export class DocumentsService {
       return {
         stream: fs.createReadStream(doc.file_url),
         mimeType: doc.mime_type,
-        fileName: doc.file_name,
+        fileName: doc.display_name,
         size: doc.file_size,
       };
     } else {
@@ -123,7 +123,7 @@ export class DocumentsService {
         return {
           stream: s3Obj.Body,
           mimeType: doc.mime_type,
-          fileName: doc.file_name,
+          fileName: doc.display_name,
           size: doc.file_size,
         };
       } catch (err) {
@@ -176,48 +176,25 @@ export class DocumentsService {
     });
   }
 
-  async verifyDocument(id: string, verifierId: string) {
+  async renameDocument(id: string, userId: string, role: UserRole, newName: string) {
     const doc = await prisma.document.findUnique({
       where: { id },
-      include: {
-        user: true,
-        application: { include: { program: true } },
-      },
     });
 
     if (!doc) {
       throw new NotFoundError('Document not found');
     }
 
+    if (role === 'user' && doc.user_id !== userId) {
+      throw new ForbiddenError('Access denied to rename this document');
+    }
+
+    // Optional: Validate extension. For simplicity, we just save the exact display_name given
+    // assuming frontend handles extension logic if needed, or we just trust the string.
+    
     const updated = await prisma.document.update({
       where: { id },
-      data: {
-        verified: true,
-        verified_by: verifierId,
-      },
-      include: {
-        application: { include: { program: true } },
-      },
-    });
-
-    await prisma.notification.create({
-      data: {
-        user_id: doc.user_id,
-        type: 'status_update',
-        title: 'Document Verified',
-        message: `Your uploaded document "${doc.file_name}" (${doc.document_type.replace('_', ' ')}) has been officially verified.`,
-        related_application_id: doc.application_id,
-      },
-    });
-
-    await sendEmail({
-      to: doc.user.email,
-      subject: 'MomPlan: Document Verification Complete',
-      html: `<h1>Document Successfully Verified</h1>
-      <p>Hello ${doc.user.full_name},</p>
-      <p>Good news! Your uploaded file <strong>${doc.file_name}</strong> has been verified by our administration team.</p>
-      ${doc.application ? `<p>This contributes to your application for <strong>${doc.application.program.name}</strong>.</p>` : ''}
-      <p>Log back into your dashboard to monitor complete application milestones.</p>`,
+      data: { display_name: newName },
     });
 
     return updated;

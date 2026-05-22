@@ -7,14 +7,18 @@ interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{ filename: string; path?: string; content?: string | Buffer }>;
 }
 
-export const sendEmail = async ({ to, subject, html }: SendEmailOptions): Promise<void> => {
+export const sendEmail = async ({ to, subject, html, attachments }: SendEmailOptions): Promise<void> => {
   const isPlaceholder = env.RESEND_API_KEY.includes('placeholder');
 
   if (isPlaceholder) {
     console.log(`✉️ [MOCK EMAIL] To: ${to} | Subject: ${subject}`);
     console.log(`Content: ${html}`);
+    if (attachments && attachments.length > 0) {
+      console.log(`Attachments: ${attachments.length} files attached.`);
+    }
     return;
   }
 
@@ -24,6 +28,7 @@ export const sendEmail = async ({ to, subject, html }: SendEmailOptions): Promis
       to,
       subject,
       html,
+      attachments,
     });
     console.log('✅ Email sent successfully:', data);
   } catch (error) {

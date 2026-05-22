@@ -89,10 +89,12 @@ export class DocumentsController {
     }
   }
 
-  async verifyDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async renameDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const document = await documentsService.verifyDocument(req.params.id, req.user.id);
+      const { name } = req.body;
+      if (!name) throw new BadRequestError('New document name is required');
+      const document = await documentsService.renameDocument(req.params.id, req.user.id, req.user.role, name);
       res.status(200).json({ success: true, data: document });
     } catch (error) {
       next(error);

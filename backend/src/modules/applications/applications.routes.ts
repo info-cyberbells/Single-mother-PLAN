@@ -18,5 +18,6 @@ router.post('/', validate(createApplicationSchema), applicationsController.creat
 router.get('/:id', validate(applicationIdParamSchema), applicationsController.getApplicationById);
 router.put('/:id', validate(updateApplicationSchema), applicationsController.updateApplication);
 router.delete('/:id', validate(applicationIdParamSchema), applicationsController.deleteApplication);
+router.post('/:id/apply', validate(applicationIdParamSchema), applicationsController.applyApplication);
 
 export default router;

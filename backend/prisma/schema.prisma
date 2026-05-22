@@ -49,7 +49,6 @@ model User {
   applications           Application[]       @relation("UserApplications")
   assigned_applications  Application[]       @relation("AdminAssignedApplications")
   documents              Document[]          @relation("UserDocuments")
-  verified_documents     Document[]          @relation("AdminVerifiedDocuments")
   notifications          Notification[]
   deadlines              Deadline[]
   sessions_as_user       CounselorSession[]  @relation("UserSessions")
@@ -215,15 +214,13 @@ model Document {
   user           User         @relation("UserDocuments", fields: [user_id], references: [id], onDelete: Cascade)
   application_id String?
   application    Application? @relation(fields: [application_id], references: [id], onDelete: SetNull)
-  document_type  String       // e.g. "birth_certificate", "proof_of_income"
-  file_name      String
-  file_url       String       // S3 URL
-  file_size      Int
-  mime_type      String
-  uploaded_at    DateTime     @default(now())
-  verified       Boolean      @default(false)
-  verified_by    String?
-  verifier       User?        @relation("AdminVerifiedDocuments", fields: [verified_by], references: [id], onDelete: SetNull)
+  document_type      String       // e.g. "birth_certificate", "proof_of_income"
+  original_file_name String
+  display_name       String
+  file_url           String       // S3 URL
+  file_size          Int
+  mime_type          String
+  uploaded_at        DateTime     @default(now())
 
   @@map("documents")
 }
