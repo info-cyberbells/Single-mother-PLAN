@@ -24,6 +24,7 @@ import { formatCurrency, getConfidenceColor } from "@/lib/utils";
 export default function BenefitsPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [showEmails, setShowEmails] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -122,7 +123,7 @@ export default function BenefitsPage() {
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-outline-variant/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
           />
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           {filters.map((f) => (
             <button
               key={f.key}
@@ -136,6 +137,18 @@ export default function BenefitsPage() {
               {f.label}
             </button>
           ))}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 bg-white text-sm">
+            <input
+              type="checkbox"
+              id="show-emails-checkbox"
+              checked={showEmails}
+              onChange={(e) => setShowEmails(e.target.checked)}
+              className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-outline-variant/60 cursor-pointer"
+            />
+            <label htmlFor="show-emails-checkbox" className="text-xs text-on-surface-variant font-semibold cursor-pointer select-none whitespace-nowrap">
+              Show Emails
+            </label>
+          </div>
         </div>
       </div>
 
@@ -219,6 +232,15 @@ export default function BenefitsPage() {
                     <p className="text-xs text-on-surface-variant leading-relaxed">
                       {result.reasoning}
                     </p>
+                  </div>
+                )}
+
+                {showEmails && result.program?.contact_email && (
+                  <div className="mb-4 p-3 rounded-lg bg-primary-50/50 border border-primary-100/50 flex items-center justify-between text-xs">
+                    <span className="text-on-surface-variant font-medium">Contact Email:</span>
+                    <a href={`mailto:${result.program.contact_email}`} className="text-primary-700 hover:underline font-mono font-semibold">
+                      {result.program.contact_email}
+                    </a>
                   </div>
                 )}
 

@@ -137,6 +137,7 @@ model BenefitProgram {
   estimated_monthly_value_min Float
   estimated_monthly_value_max Float
   application_url             String?
+  contact_email               String?
   is_active                   Boolean  @default(true)
   tags                        String[] @default([])
   metadata                    Json?

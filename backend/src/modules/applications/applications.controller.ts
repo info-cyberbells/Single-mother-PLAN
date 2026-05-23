@@ -75,7 +75,7 @@ export class ApplicationsController {
     try {
       if (!req.user) throw new UnauthorizedError();
       const { automationService } = require('../automation/automation.service');
-      const { subject, body } = req.body;
+      const { subject, body, to } = req.body;
 
       // Update local status to under_review or action_required immediately to show progress
       const application = await applicationsService.updateApplication(
@@ -85,8 +85,8 @@ export class ApplicationsController {
         { status: 'under_review', notes: 'Automated application submission processing...' }
       );
 
-      // Execute background task without BullMQ, pass custom subject/body if edited
-      automationService.processApplication(req.params.id, req.user.id, body, subject).catch(console.error);
+      // Execute background task without BullMQ, pass custom subject/body/to if edited
+      automationService.processApplication(req.params.id, req.user.id, body, subject, to).catch(console.error);
 
       res.status(200).json({ success: true, message: 'Application queued for processing', data: application });
     } catch (error) {

@@ -62,6 +62,12 @@ export default function ProgramsPage() {
                       <span className="badge badge-blue text-[10px]">{program.state}</span>
                     )}
                   </div>
+                  {program.contact_email && (
+                    <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="text-slate-500">Contact Email:</span>
+                      <span className="font-mono text-brand-300">{program.contact_email}</span>
+                    </div>
+                  )}
                 </motion.div>
               ))}
         </div>

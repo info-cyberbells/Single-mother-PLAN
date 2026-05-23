@@ -17,6 +17,7 @@ export default function ApplicationsPage() {
   const [activeApp, setActiveApp] = useState<any>(null);
   const [draftSubject, setDraftSubject] = useState("");
   const [draftBody, setDraftBody] = useState("");
+  const [draftTo, setDraftTo] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,10 +46,12 @@ export default function ApplicationsPage() {
     setIsGenerating(true);
     setDraftSubject("");
     setDraftBody("");
+    setDraftTo("");
     try {
       const res = await api.get(`/api/applications/${app.id}/draft`);
       setDraftSubject(res.data.data.subject);
       setDraftBody(res.data.data.body);
+      setDraftTo(res.data.data.to || "");
     } catch (err) {
       console.error(err);
       setDraftBody("Failed to generate draft. You can write your own email here.");
@@ -63,6 +66,7 @@ export default function ApplicationsPage() {
       await api.post(`/api/applications/${activeApp.id}/apply`, {
         subject: draftSubject,
         body: draftBody,
+        to: draftTo,
       });
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       setDraftModalOpen(false);
@@ -224,6 +228,15 @@ export default function ApplicationsPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-on-surface-variant mb-1">To (Recipient Email)</label>
+                    <input
+                      type="email"
+                      value={draftTo}
+                      onChange={(e) => setDraftTo(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-outline-variant/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs font-medium text-on-surface-variant mb-1">Subject Line</label>
                     <input

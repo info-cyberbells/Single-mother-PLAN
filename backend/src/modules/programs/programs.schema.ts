@@ -25,6 +25,7 @@ export const createProgramSchema = z.object({
     estimated_monthly_value_min: z.number().min(0),
     estimated_monthly_value_max: z.number().min(0),
     application_url: z.string().url().nullable().optional(),
+    contact_email: z.string().email().nullable().optional(),
     is_active: z.boolean().default(true),
   }),
 });
@@ -44,6 +45,7 @@ export const updateProgramSchema = z.object({
     estimated_monthly_value_min: z.number().min(0).optional(),
     estimated_monthly_value_max: z.number().min(0).optional(),
     application_url: z.string().url().nullable().optional(),
+    contact_email: z.string().email().nullable().optional(),
     is_active: z.boolean().optional(),
   }),
 });

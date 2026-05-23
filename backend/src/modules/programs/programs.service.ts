@@ -49,6 +49,7 @@ export class ProgramsService {
       estimated_monthly_value_min: number;
       estimated_monthly_value_max: number;
       application_url?: string | null;
+      contact_email?: string | null;
       is_active?: boolean;
     }
   ) {

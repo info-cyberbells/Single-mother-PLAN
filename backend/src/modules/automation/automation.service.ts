@@ -73,7 +73,7 @@ export class AutomationService {
     // 2. Determine target contact
     const state = application.user.state || 'National';
     const contacts = this.contactCache.get(`${state}-${application.program.agency}`) || [];
-    const primaryContact = contacts.length > 0 ? contacts[0].email : 'support@agency.gov'; // Fallback
+    const primaryContact = application.program.contact_email || (contacts.length > 0 ? contacts[0].email : 'support@agency.gov');
 
     // 3. Compose email via Anthropic AI (acting as OpenAI substitute as per existing arch)
     const { callClaudeApi } = require('../../config/anthropic');
@@ -136,7 +136,7 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
   /**
    * TASK 8: Process Application (Sync replacement for BullMQ)
    */
-  async processApplication(applicationId: string, userId: string, customBody?: string, customSubject?: string) {
+  async processApplication(applicationId: string, userId: string, customBody?: string, customSubject?: string, customTo?: string) {
     console.log(`[Worker] Processing Apply Now for application: ${applicationId}`);
 
     try {
@@ -145,6 +145,7 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
 
       if (customBody) emailData.body = customBody;
       if (customSubject) emailData.subject = customSubject;
+      if (customTo) emailData.to = customTo;
 
       // 2. Attach documents and send email
       await sendEmail({

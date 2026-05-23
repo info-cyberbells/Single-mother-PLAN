@@ -15,6 +15,7 @@ interface BenefitProgram {
   benefit: string;
   website: string;
   application_url: string;
+  contact_email?: string;
   tags: string[];
   eligibility_criteria: any;
 }
@@ -37,6 +38,7 @@ export default function BrowsePrograms() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedProgram, setSelectedProgram] = useState<BenefitProgram | null>(null);
+  const [showEmails, setShowEmails] = useState(false);
 
   useEffect(() => {
     fetchPrograms();
@@ -122,7 +124,7 @@ export default function BrowsePrograms() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto scrollbar-hide">
+          <div className="flex gap-2 items-center overflow-x-auto pb-2 md:pb-0 w-full md:w-auto scrollbar-hide">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
@@ -136,6 +138,18 @@ export default function BrowsePrograms() {
                 {cat}
               </button>
             ))}
+            <div className="flex items-center gap-2 pl-4 border-l border-slate-200 ml-2">
+              <input
+                type="checkbox"
+                id="show-emails-toggle"
+                checked={showEmails}
+                onChange={(e) => setShowEmails(e.target.checked)}
+                className="w-4 h-4 rounded text-[#4d41df] focus:ring-[#4d41df] border-slate-300 cursor-pointer"
+              />
+              <label htmlFor="show-emails-toggle" className="text-xs text-slate-600 font-semibold cursor-pointer select-none whitespace-nowrap">
+                Show Emails
+              </label>
+            </div>
           </div>
         </motion.div>
 
@@ -174,6 +188,14 @@ export default function BrowsePrograms() {
                     <div className="bg-slate-50 rounded-xl p-4 mb-6">
                       <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Benefit</p>
                       <p className="text-lg font-bold text-indigo-600">{program.benefit}</p>
+                      {showEmails && program.contact_email && (
+                        <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
+                          <span className="font-semibold">Contact Email:</span>
+                          <a href={`mailto:${program.contact_email}`} className="text-[#4d41df] hover:underline font-mono">
+                            {program.contact_email}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -289,6 +311,19 @@ export default function BrowsePrograms() {
                       })}
                     </div>
                   </section>
+
+                  {selectedProgram.contact_email && (
+                    <section>
+                      <h4 className="text-xs font-bold text-[#4d41df] uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <div className="w-1 h-4 bg-[#4d41df] rounded-full" />
+                        Official Contact
+                      </h4>
+                      <div className="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                        <span className="text-sm font-bold text-slate-500 uppercase tracking-tight">Contact Email</span>
+                        <span className="text-sm font-semibold text-slate-900 font-mono">{selectedProgram.contact_email}</span>
+                      </div>
+                    </section>
+                  )}
 
                   {/* Pro Tip */}
                   <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 flex gap-4">

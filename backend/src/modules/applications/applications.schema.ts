@@ -35,5 +35,6 @@ export const applyApplicationSchema = z.object({
   body: z.object({
     subject: z.string().optional(),
     body: z.string().optional(),
+    to: z.string().email().optional(),
   }),
 });
