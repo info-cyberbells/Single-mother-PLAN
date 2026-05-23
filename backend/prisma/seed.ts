@@ -15,7 +15,7 @@ const programs = [
     estimated_monthly_value_max: 900,
     website: 'https://www.acf.hhs.gov/ofa/programs/tanf',
     application_url: 'https://www.acf.hhs.gov/ofa/map/about/help-families',
-    contact_email: 'tanf.contact@acf.hhs.gov',
+    contact_email: 'infocollection@acf.hhs.gov',
     tags: ['cash', 'children', 'emergency'],
     eligibility_criteria: {
       income_threshold_type: 'low',
@@ -44,7 +44,7 @@ const programs = [
     estimated_monthly_value_max: 1200,
     website: 'https://www.fns.usda.gov/snap/supplemental-nutrition-assistance-program',
     application_url: 'https://www.fns.usda.gov/snap/state-directory',
-    contact_email: 'snap.contact@fns.usda.gov',
+    contact_email: 'AskUSDA@usda.gov',
     tags: ['food', 'essential', 'ebt'],
     eligibility_criteria: {
       income_threshold_type: 'low',
@@ -71,7 +71,7 @@ const programs = [
     estimated_monthly_value_max: 300,
     website: 'https://www.fns.usda.gov/wic',
     application_url: 'https://www.fns.usda.gov/wic/wic-state-agencies',
-    contact_email: 'wic.contact@fns.usda.gov',
+    contact_email: 'AskUSDA@usda.gov',
     tags: ['food', 'nutrition', 'pregnancy', 'children'],
     eligibility_criteria: {
       income_threshold_type: 'moderate',
@@ -98,7 +98,7 @@ const programs = [
     estimated_monthly_value_max: 2000,
     website: 'https://www.medicaid.gov/',
     application_url: 'https://www.healthcare.gov/medicaid-chip/',
-    contact_email: 'medicaid.contact@cms.hhs.gov',
+    contact_email: 'Medicaid.gov@cms.hhs.gov',
     tags: ['healthcare', 'health', 'children', 'pregnancy'],
     eligibility_criteria: {
       income_threshold_type: 'low',
@@ -127,7 +127,7 @@ const programs = [
     estimated_monthly_value_max: 1500,
     website: 'https://www.acf.hhs.gov/occ',
     application_url: 'https://www.childcare.gov/state-resources',
-    contact_email: 'ccdf.contact@acf.hhs.gov',
+    contact_email: 'OCCPolicyInfo@acf.hhs.gov',
     tags: ['childcare', 'employment', 'education'],
     eligibility_criteria: {
       income_threshold_type: 'moderate',
@@ -156,7 +156,7 @@ const programs = [
     estimated_monthly_value_max: 2500,
     website: 'https://www.hud.gov/topics/housing_choice_voucher_program_section_8',
     application_url: 'https://www.hud.gov/program_offices/public_indian_housing/pha/contacts',
-    contact_email: 'section8.contact@hud.gov',
+    contact_email: 'answers@hud.gov',
     tags: ['housing', 'rent', 'low-income'],
     eligibility_criteria: {
       income_threshold_type: 'very_low',
@@ -185,7 +185,7 @@ const programs = [
     estimated_monthly_value_max: 100,
     website: 'https://www.acf.hhs.gov/ocs/programs/liheap',
     application_url: 'https://www.acf.hhs.gov/ocs/low-income-home-energy-assistance-program-liheap',
-    contact_email: 'liheap.contact@acf.hhs.gov',
+    contact_email: 'LIHEAP@acf.hhs.gov',
     tags: ['utilities', 'energy', 'heating', 'cooling'],
     eligibility_criteria: {
       income_threshold_type: 'low',
@@ -212,7 +212,7 @@ const programs = [
     estimated_monthly_value_max: 650,
     website: 'https://www.irs.gov/credits-deductions/individuals/earned-income-tax-credit-eitc',
     application_url: 'https://www.irs.gov/credits-deductions/individuals/earned-income-tax-credit-eitc',
-    contact_email: 'eitc.contact@irs.gov',
+    contact_email: 'TAS.Form.911.Request.for.Assistance@irs.gov',
     tags: ['tax', 'cash', 'employment'],
     eligibility_criteria: {
       income_threshold_type: 'moderate',
@@ -239,7 +239,7 @@ const programs = [
     estimated_monthly_value_max: 160,
     website: 'https://www.irs.gov/credits-deductions/child-tax-credit',
     application_url: 'https://www.irs.gov/credits-deductions/child-tax-credit',
-    contact_email: 'ctc.contact@irs.gov',
+    contact_email: 'TAS.Form.911.Request.for.Assistance@irs.gov',
     tags: ['tax', 'children', 'cash'],
     eligibility_criteria: {
       income_threshold_type: 'high',
@@ -268,7 +268,7 @@ const programs = [
     estimated_monthly_value_max: 615,
     website: 'https://studentaid.gov/understand-aid/types/grants/pell',
     application_url: 'https://studentaid.gov/h/apply-for-aid/fafsa',
-    contact_email: 'pell.contact@ed.gov',
+    contact_email: 'customerservice@studentaid.gov',
     tags: ['education', 'college', 'students'],
     eligibility_criteria: {
       income_threshold_type: 'moderate',
@@ -295,7 +295,7 @@ const programs = [
     estimated_monthly_value_max: 1200,
     website: 'https://www.acf.hhs.gov/ohs',
     application_url: 'https://eclkc.ohs.acf.hhs.gov/center-locator',
-    contact_email: 'headstart.contact@acf.hhs.gov',
+    contact_email: 'HeadStart@eclkc.info',
     tags: ['education', 'children', 'preschool'],
     eligibility_criteria: {
       income_threshold_type: 'low',
@@ -324,7 +324,7 @@ const programs = [
     estimated_monthly_value_max: 9,
     website: 'https://www.lifelinesupport.org/',
     application_url: 'https://www.lifelinesupport.org/get-started/',
-    contact_email: 'lifeline.contact@fcc.gov',
+    contact_email: 'LifelineSupport@usac.org',
     tags: ['utilities', 'phone', 'internet'],
     eligibility_criteria: {
       income_threshold_type: 'low',
