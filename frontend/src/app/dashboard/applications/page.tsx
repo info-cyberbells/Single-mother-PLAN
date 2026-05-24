@@ -3,7 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardList, Plus, Filter, Search, Send, Loader2, Edit3, X } from "lucide-react";
+import { ClipboardList, Plus, Filter, Search, Send, Loader2, Edit3, X, FileText, AlertTriangle, CheckCircle, Download } from "lucide-react";
+import { usePdfGeneration } from "@/hooks/usePdfGeneration";
 import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +21,18 @@ export default function ApplicationsPage() {
   const [draftTo, setDraftTo] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const {
+    generatingPdfId,
+    pdfModal,
+    validationReport,
+    showWarningModal,
+    pendingParams,
+    handleGeneratePdf,
+    confirmAndGeneratePdf,
+    closeWarningModal,
+    closePdfModal,
+  } = usePdfGeneration();
 
   const { data: applications, isLoading } = useQuery({
     queryKey: ["applications"],
@@ -180,7 +193,17 @@ export default function ApplicationsPage() {
                   </div>
                 )}
                 {app.status === "draft" && (
-                  <div className="mt-3 pt-3 border-t border-surface-container-highest flex justify-end">
+                  <div className="mt-3 pt-3 border-t border-surface-container-highest flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleGeneratePdf(app.program?.id, app.id, app.program?.name)}
+                      disabled={generatingPdfId === app.id}
+                      loading={generatingPdfId === app.id}
+                    >
+                      <FileText className="w-3.5 h-3.5 mr-1" />
+                      Generate PDF
+                    </Button>
                     <Button 
                       size="sm" 
                       onClick={() => handlePrepareDraft(app)}
@@ -276,6 +299,132 @@ export default function ApplicationsPage() {
                 <Send className="w-4 h-4 mr-1.5" />
                 Submit Application
               </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Validation Warning Modal */}
+      {showWarningModal && pendingParams && validationReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                <h3 className="font-display font-semibold text-lg text-on-surface">Review Requirements</h3>
+              </div>
+              <button
+                onClick={closeWarningModal}
+                className="p-2 rounded-full hover:bg-surface-container text-on-surface-variant"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-on-surface">
+              <p className="text-on-surface-variant">
+                Your profile is missing some details or supporting documents required for <strong>{pendingParams.programName || "this program"}</strong>.
+              </p>
+
+              {/* Required Missing */}
+              {(validationReport.missing_required_fields.length > 0 || validationReport.missing_required_documents.length > 0) && (
+                <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl space-y-2">
+                  <h4 className="font-semibold text-red-800 text-xs uppercase tracking-wider">Required Items Missing:</h4>
+                  <ul className="list-disc pl-4 text-xs text-red-700 space-y-1">
+                    {validationReport.missing_required_fields.map((f) => (
+                      <li key={f} className="capitalize">{f.replace(/_/g, " ")}</li>
+                    ))}
+                    {validationReport.missing_required_documents.map((d) => (
+                      <li key={d} className="capitalize">{d.replace(/_/g, " ")} Document</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Optional Missing */}
+              {(validationReport.missing_optional_fields.length > 0 || validationReport.missing_optional_documents.length > 0) && (
+                <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-xl space-y-2">
+                  <h4 className="font-semibold text-amber-800 text-xs uppercase tracking-wider">Optional Items Recommended:</h4>
+                  <ul className="list-disc pl-4 text-xs text-amber-700 space-y-1">
+                    {validationReport.missing_optional_fields.map((f) => (
+                      <li key={f} className="capitalize">{f.replace(/_/g, " ")}</li>
+                    ))}
+                    {validationReport.missing_optional_documents.map((d) => (
+                      <li key={d} className="capitalize">{d.replace(/_/g, " ")} Document</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p className="text-xs text-on-surface-variant italic">
+                You can generate the application package anyway, but updating these fields in your profile will improve application success rates.
+              </p>
+            </div>
+
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={closeWarningModal}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => confirmAndGeneratePdf(pendingParams.programId, pendingParams.applicationId, pendingParams.programName)}
+                disabled={generatingPdfId !== null}
+              >
+                Generate Anyway
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* PDF Success/Download Modal */}
+      {pdfModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col"
+          >
+            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-display font-semibold text-lg text-on-surface">Generated Successfully</h3>
+              </div>
+              <button
+                onClick={closePdfModal}
+                className="p-2 rounded-full hover:bg-surface-container text-on-surface-variant"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-on-surface text-sm">{pdfModal.programName}</h4>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  Your government assistance application package has been generated and is ready for download.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={closePdfModal}>
+                Close
+              </Button>
+              {pdfModal.downloadUrl && (
+                <Button asChild>
+                  <a href={pdfModal.downloadUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="w-4 h-4 mr-1.5" />
+                    Download PDF
+                  </a>
+                </Button>
+              )}
             </div>
           </motion.div>
         </div>

@@ -54,6 +54,7 @@ model User {
   sessions_as_user       CounselorSession[]  @relation("UserSessions")
   sessions_as_counselor  CounselorSession[]  @relation("CounselorSessions")
   audit_logs             AuditLog[]
+  generated_pdfs         GeneratedPdf[]
 
   @@map("users")
 }
@@ -145,6 +146,7 @@ model BenefitProgram {
   // Relations
   eligibility_results         EligibilityResult[]
   applications                Application[]
+  generated_pdfs              GeneratedPdf[]
 
   @@map("benefit_programs")
 }
@@ -205,6 +207,7 @@ model Application {
   documents         Document[]
   notifications     Notification[]
   deadlines         Deadline[]
+  generated_pdfs    GeneratedPdf[]
 
   @@map("applications")
 }
@@ -283,3 +286,22 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model GeneratedPdf {
+  id              String      @id @default(uuid())
+  user_id         String
+  user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  application_id  String?
+  application     Application? @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  program_id      String
+  program         BenefitProgram @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  file_url        String      // S3 key or local path (same pattern as Document)
+  file_size       Int
+  version         Int         @default(1)
+  status          String      @default("generated") // generated | attached | sent
+  validation_report Json?     // missing fields/docs at generation time
+  generated_at    DateTime    @default(now())
+
+  @@map("generated_pdfs")
+}
+

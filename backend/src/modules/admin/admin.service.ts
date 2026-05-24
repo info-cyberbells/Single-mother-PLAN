@@ -323,4 +323,14 @@ export class AdminService {
       take: 100,
     });
   }
+
+  async listAllPdfs() {
+    return prisma.generatedPdf.findMany({
+      include: {
+        user: { select: { full_name: true, email: true } },
+        program: { select: { name: true, agency: true } },
+      },
+      orderBy: { generated_at: 'desc' },
+    });
+  }
 }

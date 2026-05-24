@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { AdminService } from './admin.service';
+import { PdfService } from '../pdf/pdf.service';
 import { UnauthorizedError } from '../../utils/errors';
 import { UserRole, UserStatus, ApplicationPriority } from '@prisma/client';
 
 const adminService = new AdminService();
+const pdfService = new PdfService();
 
 export class AdminController {
   async listUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -105,6 +107,25 @@ export class AdminController {
     try {
       const logs = await adminService.listAuditLogs();
       res.status(200).json({ success: true, data: logs });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listPdfs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pdfs = await adminService.listAllPdfs();
+      res.status(200).json({ success: true, data: pdfs });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async downloadPdf(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const url = await pdfService.getDownloadUrl(req.params.id, req.user.id, req.user.role);
+      res.status(200).json({ success: true, data: { url } });
     } catch (error) {
       next(error);
     }

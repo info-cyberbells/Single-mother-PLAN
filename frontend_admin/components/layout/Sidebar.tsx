@@ -38,6 +38,7 @@ const navGroups = [
       { href: "/applications", label: "Applications", icon: ClipboardList },
       { href: "/programs", label: "Programs", icon: BookOpen },
       { href: "/counselors", label: "Counselors", icon: UserCircle2 },
+      { href: "/pdfs", label: "PDFs", icon: FileText },
     ],
   },
   {

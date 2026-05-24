@@ -109,15 +109,31 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
 
     const subject = `Application Submission: ${application.program.name} - ${application.user.full_name}`;
 
+    // Check for most recently generated PDF for this application or program+user combo
+    const generatedPdf = await prisma.generatedPdf.findFirst({
+      where: {
+        user_id: userId,
+        program_id: application.program_id,
+      },
+      orderBy: { generated_at: 'desc' },
+    });
+
     return {
       to: primaryContact,
       subject,
       body: generatedBody,
-      attachments: application.documents.map(doc => ({
-        filename: doc.display_name,
-        url: doc.file_url, // S3 URL to attach
-        mimeType: doc.mime_type
-      }))
+      attachments: [
+        ...(generatedPdf ? [{
+          filename: `${application.program.name.replace(/\s+/g, '_')}_Application.pdf`,
+          url: generatedPdf.file_url,
+          mimeType: 'application/pdf',
+        }] : []),
+        ...application.documents.map(doc => ({
+          filename: doc.display_name,
+          url: doc.file_url,
+          mimeType: doc.mime_type
+        }))
+      ]
     };
   }
 

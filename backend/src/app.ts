@@ -19,6 +19,7 @@ import deadlinesRoutes from './modules/deadlines/deadlines.routes';
 import sessionsRoutes from './modules/sessions/sessions.routes';
 import billingRoutes from './modules/billing/billing.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import pdfRoutes from './modules/pdf/pdf.routes';
 
 const app: Application = express();
 
@@ -69,6 +70,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/deadlines', deadlinesRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/pdf', pdfRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

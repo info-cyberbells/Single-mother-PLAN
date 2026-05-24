@@ -34,4 +34,8 @@ router.put('/users/:id/status', validate(updateUserStatusSchema), adminControlle
 router.get('/applications', validate(listAdminApplicationsQuerySchema), adminController.listApplications);
 router.put('/applications/:id', validate(updateAdminApplicationSchema), adminController.updateApplication);
 
+// Generated PDFs tracking
+router.get('/pdfs', adminController.listPdfs);
+router.get('/pdfs/:id/download', adminController.downloadPdf);
+
 export default router;
