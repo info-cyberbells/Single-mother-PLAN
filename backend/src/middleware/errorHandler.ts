@@ -10,7 +10,26 @@ export const errorHandler = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ) => {
-  safeLogger.error('Error caught by middleware:', err);
+  // Determine if it is a client-side error (4xx) or an internal server error (500+)
+  let isInternalError = true;
+  let statusCode = 500;
+
+  if (err instanceof AppError) {
+    statusCode = err.statusCode;
+    isInternalError = statusCode >= 500;
+  } else if (err instanceof ZodError) {
+    statusCode = 400;
+    isInternalError = false;
+  } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    isInternalError = false;
+  }
+
+  if (isInternalError) {
+    safeLogger.error('Internal error caught by middleware:', err);
+  } else {
+    safeLogger.warn(`Client error (${statusCode}) caught by middleware: ${err.message}`);
+  }
 
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
@@ -45,7 +64,7 @@ export const errorHandler = (
   }
 
   // Fallback default Unhandled exception
-  const statusCode = 500;
+  statusCode = 500;
   return res.status(statusCode).json({
     success: false,
     error: {
