@@ -34,16 +34,18 @@ export class UserService {
     data: any
   ) {
     const { 
-      full_name, phone, state, zip_code,
+      full_name, phone, email, state, zip_code,
       household_size, num_children, children_ages, monthly_income,
       employment_status, housing_status, has_disability, is_pregnant,
       
       // New Wiser Moms fields
-      needs_childcare, monthly_rent, eviction_risk, domestic_violence,
-      chronic_illness, immigration_status, date_of_birth, preferred_language,
-      marital_status, other_adults, income_sources, work_situation,
+      needs_childcare, monthly_rent, monthly_utilities, eviction_risk, domestic_violence,
+      chronic_illness, immigration_status, date_of_birth, ssn_last_four, preferred_language,
+      marital_status, other_adults, income_sources, work_situation, employer_name,
       health_insurance, savings_assets, child_support_status,
-      monthly_childcare_cost, legal_issues, urgency
+      monthly_childcare_cost, childcare_preference, childcare_provider, legal_issues, urgency,
+      // Address
+      street_address, city,
     } = data;
 
     // Update User basic info
@@ -52,6 +54,8 @@ export class UserService {
     if (phone !== undefined) userUpdate.phone = phone;
     if (state !== undefined) userUpdate.state = state;
     if (zip_code !== undefined) userUpdate.zip_code = zip_code;
+    // Only update email if provided (requires uniqueness check implicitly via Prisma)
+    if (email !== undefined) userUpdate.email = email;
 
     const user = await prisma.user.update({
       where: { id: userId },
@@ -63,11 +67,12 @@ export class UserService {
     const hasFamilyData = [
       household_size, num_children, monthly_income, 
       employment_status, housing_status, has_disability, is_pregnant,
-      needs_childcare, monthly_rent, eviction_risk, domestic_violence,
-      chronic_illness, immigration_status, date_of_birth, preferred_language,
-      marital_status, other_adults, income_sources, work_situation,
+      needs_childcare, monthly_rent, monthly_utilities, eviction_risk, domestic_violence,
+      chronic_illness, immigration_status, date_of_birth, ssn_last_four, preferred_language,
+      marital_status, other_adults, income_sources, work_situation, employer_name,
       health_insurance, savings_assets, child_support_status,
-      monthly_childcare_cost, legal_issues, urgency
+      monthly_childcare_cost, childcare_preference, childcare_provider, legal_issues, urgency,
+      street_address, city,
     ].some(val => val !== undefined);
 
     if (hasFamilyData) {
@@ -88,22 +93,31 @@ export class UserService {
           
           needs_childcare: needs_childcare || false,
           monthly_rent: monthly_rent || 0,
+          monthly_utilities: monthly_utilities || 0,
           eviction_risk: eviction_risk || false,
           domestic_violence: domestic_violence || false,
           chronic_illness: chronic_illness || false,
           immigration_status: immigration_status || 'citizen',
           date_of_birth: parsedDob,
+          ssn_last_four: ssn_last_four || null,
           preferred_language: preferred_language || 'English',
           marital_status: marital_status || 'single',
           other_adults: other_adults || false,
           income_sources: income_sources || [],
           work_situation: work_situation || '',
+          employer_name: employer_name || null,
           health_insurance: health_insurance || '',
           savings_assets: savings_assets || '',
           child_support_status: child_support_status || 'none',
           monthly_childcare_cost: monthly_childcare_cost || null,
+          childcare_preference: childcare_preference || null,
+          childcare_provider: childcare_provider || null,
           legal_issues: legal_issues || [],
           urgency: urgency || 'not_urgent',
+          street_address: street_address || null,
+          city: city || null,
+          state: state || null,
+          zip_code: zip_code || null,
         },
         update: {
           ...(household_size !== undefined && { household_size }),
@@ -117,22 +131,31 @@ export class UserService {
           
           ...(needs_childcare !== undefined && { needs_childcare }),
           ...(monthly_rent !== undefined && { monthly_rent }),
+          ...(monthly_utilities !== undefined && { monthly_utilities }),
           ...(eviction_risk !== undefined && { eviction_risk }),
           ...(domestic_violence !== undefined && { domestic_violence }),
           ...(chronic_illness !== undefined && { chronic_illness }),
           ...(immigration_status !== undefined && { immigration_status }),
           ...(date_of_birth !== undefined && { date_of_birth: parsedDob }),
+          ...(ssn_last_four !== undefined && { ssn_last_four }),
           ...(preferred_language !== undefined && { preferred_language }),
           ...(marital_status !== undefined && { marital_status }),
           ...(other_adults !== undefined && { other_adults }),
           ...(income_sources !== undefined && { income_sources }),
           ...(work_situation !== undefined && { work_situation }),
+          ...(employer_name !== undefined && { employer_name }),
           ...(health_insurance !== undefined && { health_insurance }),
           ...(savings_assets !== undefined && { savings_assets }),
           ...(child_support_status !== undefined && { child_support_status }),
           ...(monthly_childcare_cost !== undefined && { monthly_childcare_cost }),
+          ...(childcare_preference !== undefined && { childcare_preference }),
+          ...(childcare_provider !== undefined && { childcare_provider }),
           ...(legal_issues !== undefined && { legal_issues }),
           ...(urgency !== undefined && { urgency }),
+          ...(street_address !== undefined && { street_address }),
+          ...(city !== undefined && { city }),
+          ...(state !== undefined && { state }),
+          ...(zip_code !== undefined && { zip_code }),
         }
       });
     }

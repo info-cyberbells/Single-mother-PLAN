@@ -10,9 +10,9 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().default('http://localhost:3000'),
   ADMIN_FRONTEND_URL: z.string().default('http://localhost:3001'),
 
-  // ─── Database ──────────────────────────────────────────────────────
-  // Neon: DATABASE_URL = pooled connection (runtime queries)
-  //       DIRECT_URL   = direct connection (Prisma migrations only)
+  // ─── Database ──────────────────────────────────────────────────────────
+  // Supabase: DATABASE_URL = pooled connection via Supavisor (runtime queries, port 6543)
+  //           DIRECT_URL   = direct connection (Prisma migrations only, port 5432)
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid postgresql:// URL'),
   DIRECT_URL: z.string().default(''),
 

@@ -12,7 +12,10 @@ const navLinks = [
   { href: "#how-it-works", label: "How it Works" },
   { href: "#testimonials", label: "Testimonials" },
   { href: "#pricing", label: "Pricing" },
+  { href: "/documents", label: "Documents" },
+  { href: "/programs", label: "Programs" },
 ];
+
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);

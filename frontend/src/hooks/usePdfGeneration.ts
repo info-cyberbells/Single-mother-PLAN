@@ -7,6 +7,7 @@ export interface ValidationReport {
   missing_required_documents: string[];
   missing_optional_fields: string[];
   missing_optional_documents: string[];
+  uploaded_document_types: string[];
   can_generate: boolean;
 }
 

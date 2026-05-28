@@ -21,6 +21,7 @@ import {
   Eye,
 } from "lucide-react";
 import { usePdfGeneration } from "@/hooks/usePdfGeneration";
+import DocumentReadinessModal from "@/components/pdf/DocumentReadinessModal";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -314,80 +315,14 @@ export default function BenefitsPage() {
       )}
 
       {/* Validation Warning Modal */}
-      {showWarningModal && pendingParams && validationReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
-          >
-            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                <h3 className="font-display font-semibold text-lg text-on-surface">Review Requirements</h3>
-              </div>
-              <button
-                onClick={closeWarningModal}
-                className="p-2 rounded-full hover:bg-surface-container text-on-surface-variant"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-sm text-on-surface">
-              <p className="text-on-surface-variant">
-                Your profile is missing some details or supporting documents required for <strong>{pendingParams.programName || "this program"}</strong>.
-              </p>
-
-              {/* Required Missing */}
-              {(validationReport.missing_required_fields.length > 0 || validationReport.missing_required_documents.length > 0) && (
-                <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl space-y-2">
-                  <h4 className="font-semibold text-red-800 text-xs uppercase tracking-wider">Required Items Missing:</h4>
-                  <ul className="list-disc pl-4 text-xs text-red-700 space-y-1">
-                    {validationReport.missing_required_fields.map((f) => (
-                      <li key={f} className="capitalize">{f.replace(/_/g, " ")}</li>
-                    ))}
-                    {validationReport.missing_required_documents.map((d) => (
-                      <li key={d} className="capitalize">{d.replace(/_/g, " ")} Document</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Optional Missing */}
-              {(validationReport.missing_optional_fields.length > 0 || validationReport.missing_optional_documents.length > 0) && (
-                <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-xl space-y-2">
-                  <h4 className="font-semibold text-amber-800 text-xs uppercase tracking-wider">Optional Items Recommended:</h4>
-                  <ul className="list-disc pl-4 text-xs text-amber-700 space-y-1">
-                    {validationReport.missing_optional_fields.map((f) => (
-                      <li key={f} className="capitalize">{f.replace(/_/g, " ")}</li>
-                    ))}
-                    {validationReport.missing_optional_documents.map((d) => (
-                      <li key={d} className="capitalize">{d.replace(/_/g, " ")} Document</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <p className="text-xs text-on-surface-variant italic">
-                You can generate the application package anyway, but updating these fields in your profile will improve application success rates.
-              </p>
-            </div>
-
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-end gap-3">
-              <Button variant="outline" onClick={closeWarningModal}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => confirmAndGeneratePdf(pendingParams.programId, pendingParams.applicationId, pendingParams.programName)}
-                disabled={generatingPdfId !== null}
-              >
-                Generate Anyway
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <DocumentReadinessModal
+        isOpen={showWarningModal}
+        validationReport={validationReport}
+        pendingParams={pendingParams}
+        generatingPdfId={generatingPdfId}
+        onClose={closeWarningModal}
+        onGenerateAnyway={confirmAndGeneratePdf}
+      />
 
       {/* PDF Success/Download Modal */}
       {pdfModal.open && (

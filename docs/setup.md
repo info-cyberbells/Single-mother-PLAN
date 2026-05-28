@@ -4,10 +4,10 @@
 - Node.js (v18+)
 - npm or yarn or pnpm
 - Git
-- Neon Database account
+- **Supabase** project (free tier available at https://supabase.com)
 - Stripe account
 - AWS S3 bucket (or local mock for uploads)
-- Redis server (local or Upstash)
+- Redis server (local or Upstash free tier)
 
 ## Step 1: Clone the Repository
 ```bash
@@ -32,12 +32,17 @@ cd ../frontend_admin && npm install
 Copy `.env.example` to `.env` in each respective folder.
 
 ### Backend (`backend/.env`)
-Set up your Neon database URL. E.g.:
+Get your Supabase connection strings from: **Supabase Dashboard → Project → Settings → Database → Connection Pooling**
+
 ```
-DATABASE_URL=postgresql://user:password@endpoint-pooler.region.aws.neon.tech/neondb?sslmode=require&channel_binding=require&connection_limit=20&connect_timeout=60&pool_timeout=60
-DIRECT_URL=postgresql://user:password@endpoint.region.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# Pooled connection (Supavisor transaction mode, port 6543) — runtime queries
+DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10
+
+# Direct connection (port 5432) — Prisma migrations only
+DIRECT_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres
 ```
-Add your Stripe keys, AWS credentials, JWT secrets, and Redis URL.
+
+Also set your Stripe keys, AWS credentials, JWT secrets, and Redis URL.
 
 ### Frontend (`frontend/.env.local`)
 ```
@@ -50,12 +55,17 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-## Step 4: Database Setup (Prisma & Neon)
+## Step 4: Database Setup (Prisma + Supabase)
 Inside `backend/`:
 ```bash
+# Generate Prisma client
 npx prisma generate
+
+# Push schema to Supabase (uses DIRECT_URL for migrations)
 npx prisma db push
 ```
+
+> **Note:** The `DIRECT_URL` is required for Prisma migrations (bypasses the PgBouncer pooler).
 
 ## Step 5: Start Development Servers
 You need to run all three services concurrently or in separate terminal windows.
