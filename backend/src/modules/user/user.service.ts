@@ -18,6 +18,7 @@ export class UserService {
         updated_at: true,
         last_active_at: true,
         status: true,
+        profile_picture: true,
         family_profile: true,
       },
     });
@@ -46,6 +47,7 @@ export class UserService {
       monthly_childcare_cost, childcare_preference, childcare_provider, legal_issues, urgency,
       // Address
       street_address, city,
+      profile_picture,
     } = data;
 
     // Update User basic info
@@ -54,6 +56,7 @@ export class UserService {
     if (phone !== undefined) userUpdate.phone = phone;
     if (state !== undefined) userUpdate.state = state;
     if (zip_code !== undefined) userUpdate.zip_code = zip_code;
+    if (profile_picture !== undefined) userUpdate.profile_picture = profile_picture;
     // Only update email if provided (requires uniqueness check implicitly via Prisma)
     if (email !== undefined) userUpdate.email = email;
 

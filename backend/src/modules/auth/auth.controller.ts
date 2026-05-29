@@ -129,4 +129,16 @@ export class AuthController {
       next(error);
     }
   }
+
+  async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+      await authService.changePassword(req.user.id, req.body.current_password, req.body.new_password);
+      res.status(200).json({ success: true, message: 'Password has been updated successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

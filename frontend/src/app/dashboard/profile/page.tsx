@@ -119,6 +119,7 @@ const profileSchema = z.object({
   phone: z.string().optional(),
   state: z.string().optional(),
   zip_code: z.string().optional(),
+  profile_picture: z.string().optional(),
 
   // Family profile base fields
   household_size: z.string().optional(),
@@ -175,6 +176,7 @@ export default function ProfilePage() {
       phone: currentUser?.phone || "",
       state: currentUser?.state || "",
       zip_code: currentUser?.zip_code || "",
+      profile_picture: currentUser?.profile_picture || "",
       household_size: String(currentUser?.family_profile?.household_size || ""),
       num_children: String(currentUser?.family_profile?.num_children || ""),
       monthly_income: String(currentUser?.family_profile?.monthly_income || ""),
@@ -287,9 +289,13 @@ export default function ProfilePage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-4 mb-8 p-6 bg-gradient-hero rounded-2xl border border-outline-variant/10"
       >
-        <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center text-white font-display font-bold text-2xl shrink-0">
-          {user?.full_name?.charAt(0) || "M"}
-        </div>
+        {user?.profile_picture ? (
+          <img src={user.profile_picture} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-primary-500/20" />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center text-white font-display font-bold text-2xl shrink-0">
+            {user?.full_name?.charAt(0) || "M"}
+          </div>
+        )}
         <div>
           <div className="font-display font-bold text-lg text-on-surface mb-1">
             {user?.full_name}
@@ -338,6 +344,11 @@ export default function ProfilePage() {
                   type="email"
                   error={profileForm.formState.errors.email?.message}
                   {...profileForm.register("email")}
+                />
+                <Input
+                  label="Profile Picture URL"
+                  placeholder="https://example.com/avatar.jpg"
+                  {...profileForm.register("profile_picture")}
                 />
                 <Input
                   label="Phone Number"

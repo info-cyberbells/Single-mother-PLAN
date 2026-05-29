@@ -103,9 +103,30 @@ export class DocumentsService {
     const isPlaceholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
 
     if (isPlaceholder) {
-      if (!fs.existsSync(doc.file_url)) throw new NotFoundError('Local file not found');
+      let filePath = doc.file_url;
+      if (!fs.existsSync(filePath)) {
+        // Fallback: try to resolve relative to process.cwd()
+        const docsIndex = doc.file_url.indexOf('uploads');
+        if (docsIndex !== -1) {
+          const relativePath = doc.file_url.substring(docsIndex);
+          const resolvedPath = path.join(process.cwd(), relativePath);
+          if (fs.existsSync(resolvedPath)) {
+            filePath = resolvedPath;
+          } else {
+            const resolvedPathSub = path.join(process.cwd(), 'backend', relativePath);
+            if (fs.existsSync(resolvedPathSub)) {
+              filePath = resolvedPathSub;
+            } else {
+              throw new NotFoundError(`Local file not found at ${filePath} or ${resolvedPath}`);
+            }
+          }
+        } else {
+          throw new NotFoundError('Local file not found');
+        }
+      }
+
       return {
-        stream: fs.createReadStream(doc.file_url),
+        stream: fs.createReadStream(filePath),
         mimeType: doc.mime_type,
         fileName: doc.display_name,
         size: doc.file_size,

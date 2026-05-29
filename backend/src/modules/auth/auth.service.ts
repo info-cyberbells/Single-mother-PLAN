@@ -180,4 +180,26 @@ export class AuthService {
     resetTokensCache.delete(token);
     refreshTokensCache.delete(userId);
   }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('Invalid current password');
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password_hash },
+    });
+  }
 }

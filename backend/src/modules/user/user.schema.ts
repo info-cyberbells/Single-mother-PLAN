@@ -7,6 +7,7 @@ export const updateProfileSchema = z.object({
     email: z.string().email().optional(),
     state: z.string().optional(),
     zip_code: z.string().optional(),
+    profile_picture: z.string().optional(),
     // Family Profile fields allowed in main profile update for convenience
     household_size: z.number().int().min(1).optional(),
     num_children: z.number().int().min(0).optional(),

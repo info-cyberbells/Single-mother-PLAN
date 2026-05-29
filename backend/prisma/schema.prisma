@@ -42,6 +42,7 @@ model User {
   updated_at             DateTime  @updatedAt
   last_active_at         DateTime  @default(now())
   status                 UserStatus @default(active)
+  profile_picture        String?
 
   // Relations
   family_profile         FamilyProfile?

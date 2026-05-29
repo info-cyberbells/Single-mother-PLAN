@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, ExternalLink, Info, CheckCircle, ChevronRight, X } from 'lucide-react';
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 
 interface BenefitProgram {
   id: string;
@@ -84,9 +86,11 @@ export default function BrowsePrograms() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbf8fc] pb-20">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-[#4d41df] to-[#675df9] text-white pt-24 pb-16 px-6">
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-surface pb-20 pt-16">
+        {/* Hero Section */}
+        <div className="bg-gradient-primary text-white pt-24 pb-16 px-6">
         <div className="max-w-7xl mx-auto">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -119,7 +123,7 @@ export default function BrowsePrograms() {
             <input 
               type="text"
               placeholder="Search programs, e.g. 'rent', 'childcare', 'food'..."
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4d41df]/20 transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-surface-container-lowest border border-outline-variant/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-on-surface"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -131,8 +135,8 @@ export default function BrowsePrograms() {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
                   selectedCategory === cat 
-                  ? 'bg-[#4d41df] text-white shadow-lg shadow-indigo-200' 
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'
+                  ? 'bg-primary-500 text-white shadow-primary' 
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container border border-outline-variant/30'
                 }`}
               >
                 {cat}
@@ -144,7 +148,7 @@ export default function BrowsePrograms() {
                 id="show-emails-toggle"
                 checked={showEmails}
                 onChange={(e) => setShowEmails(e.target.checked)}
-                className="w-4 h-4 rounded text-[#4d41df] focus:ring-[#4d41df] border-slate-300 cursor-pointer"
+                className="w-4 h-4 rounded text-primary-500 focus:ring-primary-500 border-outline-variant/50 cursor-pointer"
               />
               <label htmlFor="show-emails-toggle" className="text-xs text-slate-600 font-semibold cursor-pointer select-none whitespace-nowrap">
                 Show Emails
@@ -173,12 +177,12 @@ export default function BrowsePrograms() {
                 >
                   <div className="p-6 flex-1">
                     <div className="flex justify-between items-start mb-4">
-                      <span className="px-3 py-1 bg-indigo-50 text-[#4d41df] text-xs font-bold rounded-full uppercase tracking-wider">
+                      <span className="px-3 py-1 bg-primary-50 text-primary-600 text-xs font-bold rounded-full uppercase tracking-wider">
                         {program.program_type}
                       </span>
-                      <span className="text-xs text-slate-400 font-medium">{program.agency}</span>
+                      <span className="text-xs text-on-surface-variant/70 font-medium">{program.agency}</span>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-[#4d41df] transition-colors line-clamp-2">
+                    <h3 className="text-xl font-bold text-on-surface mb-3 group-hover:text-primary-500 transition-colors line-clamp-2">
                       {program.name}
                     </h3>
                     <p className="text-slate-600 text-sm mb-6 line-clamp-3 leading-relaxed">
@@ -191,7 +195,7 @@ export default function BrowsePrograms() {
                       {showEmails && program.contact_email && (
                         <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
                           <span className="font-semibold">Contact Email:</span>
-                          <a href={`mailto:${program.contact_email}`} className="text-[#4d41df] hover:underline font-mono">
+                          <a href={`mailto:${program.contact_email}`} className="text-primary-500 hover:underline font-mono">
                             {program.contact_email}
                           </a>
                         </div>
@@ -211,7 +215,7 @@ export default function BrowsePrograms() {
                       href={program.application_url || program.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-3 bg-[#1b1b1e] text-white rounded-xl font-semibold text-sm hover:bg-black transition-all shadow-lg"
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-on-surface text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all shadow-lg"
                     >
                       Learn how to apply
                       <ExternalLink className="w-4 h-4" />
@@ -266,8 +270,8 @@ export default function BrowsePrograms() {
                 <div className="space-y-8">
                   {/* General Overview */}
                   <section>
-                    <h4 className="text-xs font-bold text-[#4d41df] uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-[#4d41df] rounded-full" />
+                    <h4 className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-primary-500 rounded-full" />
                       General Requirements
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,8 +297,8 @@ export default function BrowsePrograms() {
 
                   {/* Specific Details */}
                   <section>
-                    <h4 className="text-xs font-bold text-[#4d41df] uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-[#4d41df] rounded-full" />
+                    <h4 className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-primary-500 rounded-full" />
                       Specific Criteria
                     </h4>
                     <div className="space-y-3">
@@ -314,8 +318,8 @@ export default function BrowsePrograms() {
 
                   {selectedProgram.contact_email && (
                     <section>
-                      <h4 className="text-xs font-bold text-[#4d41df] uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-[#4d41df] rounded-full" />
+                      <h4 className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <div className="w-1 h-4 bg-primary-500 rounded-full" />
                         Official Contact
                       </h4>
                       <div className="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -340,12 +344,12 @@ export default function BrowsePrograms() {
                 </div>
               </div>
 
-              <div className="p-6 bg-slate-50 border-top border-slate-100">
+              <div className="p-6 bg-surface-container-low border-top border-outline-variant/20">
                 <a 
                   href={selectedProgram.application_url || selectedProgram.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-4 bg-[#4d41df] text-white rounded-2xl font-bold hover:shadow-xl hover:shadow-indigo-200 transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-4 bg-primary-500 text-white rounded-2xl font-bold hover:shadow-primary-lg transition-all"
                 >
                   Start Official Application
                   <ExternalLink className="w-5 h-5" />
@@ -355,6 +359,8 @@ export default function BrowsePrograms() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+      <Footer />
+    </>
   );
 }

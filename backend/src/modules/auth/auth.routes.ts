@@ -9,6 +9,7 @@ import {
   refreshSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
 } from './auth.schema';
 
 const router = Router();
@@ -20,5 +21,6 @@ router.post('/logout', authenticate, authController.logout);
 router.post('/refresh', validate(refreshSchema), authController.refresh);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
+router.put('/password', authenticate, validate(changePasswordSchema), authController.changePassword);
 
 export default router;

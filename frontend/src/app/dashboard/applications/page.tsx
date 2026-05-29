@@ -448,7 +448,9 @@ export default function ApplicationsPage() {
             <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-emerald-500" />
-                <h3 className="font-display font-semibold text-lg text-on-surface">Generated Successfully</h3>
+                <h3 className="font-display font-semibold text-lg text-on-surface">
+                  Generated Successfully at {new Date().toLocaleTimeString()}
+                </h3>
               </div>
               <button
                 onClick={closePdfModal}
@@ -470,7 +472,7 @@ export default function ApplicationsPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <Button 
                 variant="outline" 
                 onClick={closePdfModal}
@@ -479,7 +481,7 @@ export default function ApplicationsPage() {
                 Close
               </Button>
               {pdfModal.pdfId && (
-                <>
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     variant="outline"
                     onClick={() => viewPdf(pdfModal.pdfId!)}
@@ -499,7 +501,7 @@ export default function ApplicationsPage() {
                     <Download className="w-4 h-4 mr-1.5" />
                     Download PDF
                   </Button>
-                </>
+                </div>
               )}
             </div>
           </motion.div>
