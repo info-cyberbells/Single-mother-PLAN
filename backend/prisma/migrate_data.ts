@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
 
-const NEON_URL = "postgresql://neondb_owner:npg_7cqFAOLI3wVG@ep-bold-river-aqp8yglh-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require";
-const SUPABASE_URL = "postgresql://postgres.rskhycwjcaxmujhqslyq:Helpsinglemoms01@aws-1-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10";
+dotenv.config();
+
+const NEON_URL = process.env.NEON_DATABASE_URL || "";
+const SUPABASE_URL = process.env.DATABASE_URL || "";
 
 async function main() {
   console.log('Initializing Prisma clients...');

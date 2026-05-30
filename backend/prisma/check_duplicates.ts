@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
 
-const SUPABASE_URL = "postgresql://postgres.rskhycwjcaxmujhqslyq:Helpsinglemoms01@aws-1-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10";
+dotenv.config();
+
+const SUPABASE_URL = process.env.DATABASE_URL || "";
 
 async function main() {
   console.log('Connecting to Supabase to check for duplicate results...');
