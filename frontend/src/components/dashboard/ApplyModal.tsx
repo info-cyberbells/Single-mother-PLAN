@@ -236,10 +236,10 @@ export default function ApplyModal({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-surface rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border border-outline-variant/30"
+            className="bg-surface rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] border border-outline-variant/30"
           >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest rounded-t-2xl">
               <div>
                 <h3 className="font-display font-bold text-xl text-on-surface">
                   Apply for {program.name}
@@ -483,7 +483,7 @@ export default function ApplyModal({
 
             {/* Modal Footer */}
             {!success && (
-              <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-between">
+              <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-between rounded-b-2xl">
                 <Button variant="outline" onClick={onClose}>
                   Cancel
                 </Button>

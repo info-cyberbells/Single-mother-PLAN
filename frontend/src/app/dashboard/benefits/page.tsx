@@ -327,9 +327,9 @@ export default function BenefitsPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+            className="bg-surface rounded-2xl shadow-xl w-full max-w-md flex flex-col"
           >
-            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest rounded-t-2xl">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-emerald-500" />
                 <h3 className="font-display font-semibold text-lg text-on-surface">
@@ -356,7 +356,7 @@ export default function BenefitsPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-b-2xl">
               <Button 
                 variant="outline" 
                 onClick={closePdfModal}

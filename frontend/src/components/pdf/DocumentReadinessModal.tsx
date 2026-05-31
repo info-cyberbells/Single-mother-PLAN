@@ -180,10 +180,10 @@ export default function DocumentReadinessModal({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="bg-surface rounded-3xl border border-outline-variant/30 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-surface rounded-3xl border border-outline-variant/30 shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]"
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-outline-variant/30 flex items-center justify-between bg-surface-container-lowest">
+        <div className="px-6 py-5 border-b border-outline-variant/30 flex items-center justify-between bg-surface-container-lowest rounded-t-3xl">
           <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-xl ${hasMissingRequired ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
               <AlertTriangle className="w-5 h-5" />
@@ -350,7 +350,7 @@ export default function DocumentReadinessModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-outline-variant/30 bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-outline-variant/30 bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 rounded-b-3xl">
           <Button variant="outline" onClick={onClose} className="w-full sm:w-auto order-2 sm:order-1">
             Cancel
           </Button>

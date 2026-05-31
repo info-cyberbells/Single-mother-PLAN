@@ -293,9 +293,9 @@ export default function BrowsePrograms() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">{selectedProgram.name}</h2>
                   <p className="text-slate-500 text-sm">Eligibility Requirements</p>
@@ -386,7 +386,7 @@ export default function BrowsePrograms() {
                 </div>
               </div>
 
-              <div className="p-6 bg-surface-container-low border-top border-outline-variant/20">
+              <div className="p-6 bg-surface-container-low border-t border-outline-variant/20 rounded-b-3xl">
                 <a 
                   href={selectedProgram.application_url || selectedProgram.website}
                   target="_blank"

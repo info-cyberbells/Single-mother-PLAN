@@ -235,9 +235,9 @@ export default function ApplicationsPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
+            className="bg-surface rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]"
           >
-            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest rounded-t-2xl">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
                 <h3 className="font-display font-semibold text-lg text-on-surface">Review Requirements</h3>
@@ -290,7 +290,7 @@ export default function ApplicationsPage() {
               </p>
             </div>
 
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-end gap-3">
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-end gap-3 rounded-b-2xl">
               <Button variant="outline" onClick={closeWarningModal}>
                 Cancel
               </Button>
@@ -311,9 +311,9 @@ export default function ApplicationsPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+            className="bg-surface rounded-2xl shadow-xl w-full max-w-md flex flex-col"
           >
-            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
+            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest rounded-t-2xl">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-emerald-500" />
                 <h3 className="font-display font-semibold text-lg text-on-surface">
@@ -340,7 +340,7 @@ export default function ApplicationsPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-b-2xl">
               <Button 
                 variant="outline" 
                 onClick={closePdfModal}
