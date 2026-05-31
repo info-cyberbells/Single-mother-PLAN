@@ -192,9 +192,12 @@ export class AuthService {
       data: { password_hash },
     });
 
-    // Invalidate reset token and user's existing refresh token sessions
+    // Invalidate reset token and clear the user's refresh token from the database
     resetTokensCache.delete(token);
-    refreshTokensCache.delete(userId);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { refresh_token: null },
+    });
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
