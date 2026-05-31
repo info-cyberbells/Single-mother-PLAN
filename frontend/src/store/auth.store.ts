@@ -22,6 +22,16 @@ export interface AuthUser {
     children_ages?: number[];
 
     // New fields
+    first_name?: string | null;
+    last_name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    street_address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+    children_dobs?: string[];
+    ssn_last_four?: string | null;
     date_of_birth?: string | null;
     preferred_language?: string;
     monthly_rent?: number;

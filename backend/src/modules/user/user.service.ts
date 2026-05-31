@@ -45,6 +45,7 @@ export class UserService {
       marital_status, other_adults, income_sources, work_situation, employer_name,
       health_insurance, savings_assets, child_support_status,
       monthly_childcare_cost, childcare_preference, childcare_provider, legal_issues, urgency,
+      first_name, last_name, children_dobs,
       // Address
       street_address, city,
       profile_picture,
@@ -75,6 +76,7 @@ export class UserService {
       marital_status, other_adults, income_sources, work_situation, employer_name,
       health_insurance, savings_assets, child_support_status,
       monthly_childcare_cost, childcare_preference, childcare_provider, legal_issues, urgency,
+      first_name, last_name, children_dobs,
       street_address, city,
     ].some(val => val !== undefined);
 
@@ -121,6 +123,9 @@ export class UserService {
           city: city || null,
           state: state || null,
           zip_code: zip_code || null,
+          first_name: first_name || null,
+          last_name: last_name || null,
+          children_dobs: children_dobs || [],
         },
         update: {
           ...(household_size !== undefined && { household_size }),
@@ -159,6 +164,9 @@ export class UserService {
           ...(city !== undefined && { city }),
           ...(state !== undefined && { state }),
           ...(zip_code !== undefined && { zip_code }),
+          ...(first_name !== undefined && { first_name }),
+          ...(last_name !== undefined && { last_name }),
+          ...(children_dobs !== undefined && { children_dobs }),
         }
       });
     }

@@ -500,10 +500,7 @@ export default function EligibilityPage() {
       })();
 
       const numChildren = user.family_profile?.num_children || 0;
-      const initialDobs = (user.family_profile?.children_ages || []).map((age) => {
-        const birthYear = new Date().getFullYear() - age;
-        return `${birthYear}-01-01`;
-      });
+      const initialDobs = [...(user.family_profile?.children_dobs || [])];
       while (initialDobs.length < numChildren) {
         initialDobs.push("");
       }
@@ -624,6 +621,8 @@ export default function EligibilityPage() {
 
       const profileRes = await api.put("/api/user/profile", {
         full_name: `${dataToSubmit.first_name} ${dataToSubmit.last_name}`.trim() || undefined,
+        first_name: dataToSubmit.first_name || null,
+        last_name: dataToSubmit.last_name || null,
         phone: dataToSubmit.phone || undefined,
         email: dataToSubmit.email || undefined,
         state: dataToSubmit.state || undefined,
@@ -633,6 +632,7 @@ export default function EligibilityPage() {
         household_size: dataToSubmit.household_size,
         num_children: dataToSubmit.num_children,
         children_ages: ages,
+        children_dobs: dataToSubmit.children_birthdates,
         monthly_income: parseFloat(dataToSubmit.monthly_income) || 0,
         employment_status: dataToSubmit.employment_status,
         housing_status: dataToSubmit.housing_status,

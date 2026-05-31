@@ -29,6 +29,9 @@ export const updateProfileSchema = z.object({
     immigration_status: z.string().nullable().or(z.literal('')).optional(),
     date_of_birth: z.string().nullable().or(z.literal('')).optional(), // ISO string or format
     ssn_last_four: z.string().max(4).nullable().or(z.literal('')).optional(),
+    first_name: z.string().nullable().or(z.literal('')).optional(),
+    last_name: z.string().nullable().or(z.literal('')).optional(),
+    children_dobs: z.array(z.string()).optional(),
     preferred_language: z.string().nullable().or(z.literal('')).optional(),
     marital_status: z.string().nullable().or(z.literal('')).optional(),
     other_adults: z.boolean().optional(),
