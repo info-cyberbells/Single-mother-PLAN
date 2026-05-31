@@ -1,27 +1,48 @@
 import { prisma } from '../../config/prisma';
 import { NotFoundError } from '../../utils/errors';
 
+let cachedPrograms: any[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache TTL
+
+export function clearProgramsCache() {
+  cachedPrograms = null;
+  cacheTimestamp = 0;
+}
+
 export class ProgramsService {
   async listPrograms(filters: { state?: string; type?: string }) {
-    const whereClause: any = {
-      is_active: true,
-    };
-
-    if (filters.state) {
-      whereClause.OR = [
-        { federal_or_state: 'federal' },
-        { state_code: { equals: filters.state, mode: 'insensitive' } },
-      ];
+    const now = Date.now();
+    if (!cachedPrograms || now - cacheTimestamp > CACHE_TTL) {
+      cachedPrograms = await prisma.benefitProgram.findMany({
+        where: {
+          is_active: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+      cacheTimestamp = now;
     }
 
-    if (filters.type) {
-      whereClause.program_type = { equals: filters.type, mode: 'insensitive' };
+    let filtered = cachedPrograms;
+
+    if (filters.state && filters.state !== 'All') {
+      const targetState = filters.state.toLowerCase();
+      filtered = filtered.filter(p => {
+        const fedOrState = (p.federal_or_state || '').toLowerCase();
+        const stateCode = (p.state_code || '').toLowerCase();
+        return fedOrState === 'federal' || fedOrState.includes('federal') || stateCode === targetState;
+      });
     }
 
-    return prisma.benefitProgram.findMany({
-      where: whereClause,
-      orderBy: { name: 'asc' },
-    });
+    if (filters.type && filters.type !== 'All') {
+      const targetType = filters.type.toLowerCase();
+      filtered = filtered.filter(p => {
+        const programType = (p.program_type || '').toLowerCase();
+        return programType === targetType;
+      });
+    }
+
+    return filtered;
   }
 
   async getProgramById(id: string) {
@@ -57,6 +78,9 @@ export class ProgramsService {
       data,
     });
 
+    // Invalidate cache
+    clearProgramsCache();
+
     // Create Audit log
     await prisma.auditLog.create({
       data: {
@@ -85,6 +109,9 @@ export class ProgramsService {
       data,
     });
 
+    // Invalidate cache
+    clearProgramsCache();
+
     await prisma.auditLog.create({
       data: {
         admin_id: adminId,
@@ -110,6 +137,9 @@ export class ProgramsService {
     await prisma.benefitProgram.delete({
       where: { id },
     });
+
+    // Invalidate cache
+    clearProgramsCache();
 
     await prisma.auditLog.create({
       data: {

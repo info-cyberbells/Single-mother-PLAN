@@ -65,17 +65,16 @@ export default function BrowsePrograms() {
 
   useEffect(() => {
     fetchPrograms();
-  }, [selectedState]);
+  }, []);
 
   useEffect(() => {
     filterPrograms();
-  }, [searchQuery, selectedCategory, programs]);
+  }, [searchQuery, selectedCategory, selectedState, programs]);
 
   const fetchPrograms = async () => {
     try {
       setLoading(true);
-      const params = selectedState && selectedState !== 'All' ? { state: selectedState } : {};
-      const response = await api.get('/api/programs', { params });
+      const response = await api.get('/api/programs');
       if (response.data.success) {
         setPrograms(response.data.data);
       }
@@ -88,6 +87,15 @@ export default function BrowsePrograms() {
 
   const filterPrograms = () => {
     let filtered = programs;
+
+    if (selectedState !== 'All') {
+      const targetState = selectedState.toLowerCase();
+      filtered = filtered.filter(p => {
+        const fedOrState = (p.federal_or_state || '').toLowerCase();
+        const stateCode = (p.state_code || '').toLowerCase();
+        return fedOrState === 'federal' || fedOrState.includes('federal') || stateCode === targetState;
+      });
+    }
 
     if (selectedCategory !== 'All') {
       filtered = filtered.filter(p => 
@@ -233,7 +241,15 @@ export default function BrowsePrograms() {
                     
                     <div className="bg-slate-50 rounded-xl p-4 mb-6">
                       <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Benefit</p>
-                      <p className="text-lg font-bold text-primary-600">{program.benefit}</p>
+                      <p className="text-lg font-bold text-primary-600">
+                        {program.benefit || (
+                          program.estimated_monthly_value_min != null && program.estimated_monthly_value_max != null
+                            ? (program.estimated_monthly_value_min === program.estimated_monthly_value_max
+                              ? `$${program.estimated_monthly_value_min}/mo`
+                              : `$${program.estimated_monthly_value_min}–$${program.estimated_monthly_value_max}/mo`)
+                            : 'Varies'
+                        )}
+                      </p>
                       {showEmails && program.contact_email && (
                         <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
                           <span className="font-semibold">Contact Email:</span>
