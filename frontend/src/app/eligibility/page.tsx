@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +26,7 @@ import {
   Phone,
   Mail,
   Scale,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -288,12 +289,143 @@ function DollarInput({ placeholder, value, onChange }: { placeholder?: string; v
   );
 }
 
+// Helper component for Year/Month/Day date selection
+function DateOfBirthDropdowns({
+  value,
+  onChange,
+  isChild = false,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  isChild?: boolean;
+}) {
+  // Parse YYYY-MM-DD
+  let initialYear = "";
+  let initialMonth = "";
+  let initialDay = "";
+  if (value && value.includes("-")) {
+    const parts = value.split("-");
+    if (parts.length === 3) {
+      initialYear = parts[0];
+      initialMonth = parts[1];
+      initialDay = parts[2];
+    }
+  }
+
+  const [year, setYear] = useState(initialYear);
+  const [month, setMonth] = useState(initialMonth);
+  const [day, setDay] = useState(initialDay);
+
+  // Sync state if value changes externally (e.g. from hydration/localStorage)
+  useEffect(() => {
+    if (value && value.includes("-")) {
+      const parts = value.split("-");
+      if (parts.length === 3) {
+        setYear(parts[0]);
+        setMonth(parts[1]);
+        setDay(parts[2]);
+      }
+    } else {
+      setYear("");
+      setMonth("");
+      setDay("");
+    }
+  }, [value]);
+
+  const handleSelect = (y: string, m: string, d: string) => {
+    setYear(y);
+    setMonth(m);
+    setDay(d);
+    if (y && m && d) {
+      onChange(`${y}-${m}-${d}`);
+    } else {
+      onChange("");
+    }
+  };
+
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  if (isChild) {
+    // Child age 0 to 18
+    for (let i = currentYear; i >= currentYear - 18; i--) {
+      years.push(String(i));
+    }
+  } else {
+    // Adult age 18 to 100+
+    for (let i = currentYear; i >= currentYear - 100; i--) {
+      years.push(String(i));
+    }
+  }
+
+  const months = [
+    { val: "01", label: "January" },
+    { val: "02", label: "February" },
+    { val: "03", label: "March" },
+    { val: "04", label: "April" },
+    { val: "05", label: "May" },
+    { val: "06", label: "June" },
+    { val: "07", label: "July" },
+    { val: "08", label: "August" },
+    { val: "09", label: "September" },
+    { val: "10", label: "October" },
+    { val: "11", label: "November" },
+    { val: "12", label: "December" },
+  ];
+
+  const days = [];
+  for (let i = 1; i <= 31; i++) {
+    days.push(String(i).padStart(2, "0"));
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <select
+        value={month}
+        onChange={(e) => handleSelect(year, e.target.value, day)}
+        className="px-3 py-2.5 rounded-xl border border-outline-variant bg-white focus:border-primary-500 outline-none text-sm font-medium text-on-surface"
+      >
+        <option value="">Month</option>
+        {months.map((m) => (
+          <option key={m.val} value={m.val}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+      <select
+        value={day}
+        onChange={(e) => handleSelect(year, month, e.target.value)}
+        className="px-3 py-2.5 rounded-xl border border-outline-variant bg-white focus:border-primary-500 outline-none text-sm font-medium text-on-surface"
+      >
+        <option value="">Day</option>
+        {days.map((d) => (
+          <option key={d} value={d}>
+            {parseInt(d)}
+          </option>
+        ))}
+      </select>
+      <select
+        value={year}
+        onChange={(e) => handleSelect(e.target.value, month, day)}
+        className="px-3 py-2.5 rounded-xl border border-outline-variant bg-white focus:border-primary-500 outline-none text-sm font-medium text-on-surface"
+      >
+        <option value="">Year</option>
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function EligibilityPage() {
   const [step, setStep] = useState(1);
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [results, setResults] = useState<any[]>([]);
-  const { isAuthenticated, updateUser } = useAuthStore();
+  const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated, user, updateUser } = useAuthStore();
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -349,6 +481,98 @@ export default function EligibilityPage() {
     domestic_violence: null as boolean | null,
   });
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("pending_eligibility_scan")) {
+      return;
+    }
+    if (user) {
+      const [first, ...rest] = (user.full_name || "").split(" ");
+      const last = rest.join(" ");
+      
+      const dobStr = (() => {
+        if (!user.family_profile?.date_of_birth) return "";
+        try {
+          const d = new Date(user.family_profile.date_of_birth);
+          return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+        } catch {
+          return "";
+        }
+      })();
+
+      const numChildren = user.family_profile?.num_children || 0;
+      const initialDobs = [...(user.family_profile?.children_dobs || [])];
+      while (initialDobs.length < numChildren) {
+        initialDobs.push("");
+      }
+
+      setFormData({
+        first_name: user.family_profile?.first_name || first || "",
+        last_name: user.family_profile?.last_name || last || "",
+        date_of_birth: dobStr,
+        ssn_last_four: user.family_profile?.ssn_last_four || "",
+        phone: user.phone || user.family_profile?.phone || "",
+        email: user.email || user.family_profile?.email || "",
+        preferred_language: user.family_profile?.preferred_language || "English",
+        street_address: user.family_profile?.street_address || "",
+        city: user.family_profile?.city || "",
+        state: user.state || user.family_profile?.state || "GA",
+        zip_code: user.zip_code || user.family_profile?.zip_code || "",
+        monthly_income: user.family_profile?.monthly_income !== null && user.family_profile?.monthly_income !== undefined ? String(user.family_profile.monthly_income) : "",
+        income_sources: (user.family_profile?.income_sources as string[]) || [],
+        employment_status: user.family_profile?.employment_status || "full_time",
+        employer_name: user.family_profile?.employer_name || "",
+        other_earners: user.family_profile?.other_household_income ? "family" : "none",
+        savings_assets: user.family_profile?.savings_assets || "none",
+        child_support_status: user.family_profile?.child_support_status || "no_arrangement",
+        household_size: user.family_profile?.household_size || 1,
+        num_children: numChildren,
+        children_birthdates: initialDobs,
+        has_disability: user.family_profile?.has_disability ?? null,
+        is_pregnant: user.family_profile?.is_pregnant ?? null,
+        marital_status: user.family_profile?.marital_status || "single",
+        other_adults: user.family_profile?.other_adults ?? null,
+        housing_status: user.family_profile?.housing_status || "renting",
+        monthly_rent: user.family_profile?.monthly_rent !== null && user.family_profile?.monthly_rent !== undefined ? String(user.family_profile.monthly_rent) : "",
+        monthly_utilities: user.family_profile?.monthly_utilities !== null && user.family_profile?.monthly_utilities !== undefined ? String(user.family_profile.monthly_utilities) : "",
+        landlord_name: user.family_profile?.landlord_name || "",
+        eviction_risk: user.family_profile?.eviction_risk ?? null,
+        needs_childcare: user.family_profile?.needs_childcare ?? null,
+        childcare_preference: user.family_profile?.childcare_preference || "",
+        childcare_provider: user.family_profile?.childcare_provider || "",
+        monthly_childcare_cost: user.family_profile?.monthly_childcare_cost !== null && user.family_profile?.monthly_childcare_cost !== undefined ? String(user.family_profile.monthly_childcare_cost) : "",
+        work_hours: user.family_profile?.work_situation || "",
+        health_insurance: user.family_profile?.health_insurance || "none",
+        chronic_illness: user.family_profile?.chronic_illness ?? null,
+        er_visit: null,
+        immigration_status: user.family_profile?.immigration_status || "citizen",
+        legal_issues: (user.family_profile?.legal_issues as string[]) || [],
+        urgency: user.family_profile?.urgency || "not_urgent",
+        domestic_violence: user.family_profile?.domestic_violence ?? null,
+      });
+    }
+  }, [user]);
+
+  // Load pending scan from localStorage on mount/login
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const pendingScan = localStorage.getItem("pending_eligibility_scan");
+      if (pendingScan) {
+        try {
+          const parsed = JSON.parse(pendingScan);
+          if (parsed) {
+            setFormData(parsed);
+            if (isAuthenticated) {
+              localStorage.removeItem("pending_eligibility_scan");
+              runScan(parsed);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse pending eligibility scan:", e);
+        }
+      }
+    }
+  }, [isAuthenticated]);
+
   const set = (field: string, value: any) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -375,10 +599,19 @@ export default function EligibilityPage() {
     });
   };
 
-  const runScan = async () => {
+  const runScan = async (overrideData?: typeof formData) => {
+    const dataToSubmit = overrideData || formData;
+    setError(null);
+    if (!isAuthenticated) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pending_eligibility_scan", JSON.stringify(dataToSubmit));
+      }
+      router.push("/register?redirect=eligibility");
+      return;
+    }
     setIsScanning(true);
     try {
-      const ages = formData.children_birthdates.map((dob) => {
+      const ages = dataToSubmit.children_birthdates.map((dob) => {
         if (!dob) return 2;
         const birth = new Date(dob);
         if (isNaN(birth.getTime())) return 2;
@@ -387,44 +620,43 @@ export default function EligibilityPage() {
       });
 
       const profileRes = await api.put("/api/user/profile", {
-        full_name: `${formData.first_name} ${formData.last_name}`.trim(),
-        phone: formData.phone,
-        email: formData.email,
-        state: formData.state,
-        zip_code: formData.zip_code,
-        street_address: formData.street_address,
-        city: formData.city,
-        household_size: formData.household_size,
-        num_children: formData.num_children,
+        full_name: `${dataToSubmit.first_name} ${dataToSubmit.last_name}`.trim() || undefined,
+        phone: dataToSubmit.phone || undefined,
+        email: dataToSubmit.email || undefined,
+        state: dataToSubmit.state || undefined,
+        zip_code: dataToSubmit.zip_code || undefined,
+        street_address: dataToSubmit.street_address || undefined,
+        city: dataToSubmit.city || undefined,
+        household_size: dataToSubmit.household_size,
+        num_children: dataToSubmit.num_children,
         children_ages: ages,
-        monthly_income: parseFloat(formData.monthly_income) || 0,
-        employment_status: formData.employment_status,
-        housing_status: formData.housing_status,
-        is_pregnant: formData.is_pregnant ?? false,
-        has_disability: formData.has_disability ?? false,
-        needs_childcare: formData.needs_childcare ?? false,
-        monthly_rent: parseFloat(formData.monthly_rent) || 0,
-        monthly_utilities: parseFloat(formData.monthly_utilities) || 0,
-        eviction_risk: formData.eviction_risk ?? false,
-        domestic_violence: formData.domestic_violence ?? false,
-        chronic_illness: formData.chronic_illness ?? false,
-        immigration_status: formData.immigration_status,
-        date_of_birth: formData.date_of_birth || null,
-        ssn_last_four: formData.ssn_last_four || null,
-        preferred_language: formData.preferred_language,
-        marital_status: formData.marital_status,
-        other_adults: formData.other_adults ?? false,
-        income_sources: formData.income_sources,
-        work_situation: formData.employment_status,
-        employer_name: formData.employer_name,
-        health_insurance: formData.health_insurance,
-        savings_assets: formData.savings_assets,
-        monthly_childcare_cost: formData.needs_childcare ? (parseFloat(formData.monthly_childcare_cost) || 0) : null,
-        childcare_preference: formData.childcare_preference,
-        childcare_provider: formData.childcare_provider,
-        legal_issues: formData.legal_issues,
-        urgency: formData.urgency,
-        child_support_status: formData.child_support_status,
+        monthly_income: parseFloat(dataToSubmit.monthly_income) || 0,
+        employment_status: dataToSubmit.employment_status,
+        housing_status: dataToSubmit.housing_status,
+        is_pregnant: dataToSubmit.is_pregnant ?? false,
+        has_disability: dataToSubmit.has_disability ?? false,
+        needs_childcare: dataToSubmit.needs_childcare ?? false,
+        monthly_rent: parseFloat(dataToSubmit.monthly_rent) || 0,
+        monthly_utilities: parseFloat(dataToSubmit.monthly_utilities) || 0,
+        eviction_risk: dataToSubmit.eviction_risk ?? false,
+        domestic_violence: dataToSubmit.domestic_violence ?? false,
+        chronic_illness: dataToSubmit.chronic_illness ?? false,
+        immigration_status: dataToSubmit.immigration_status,
+        date_of_birth: dataToSubmit.date_of_birth || null,
+        ssn_last_four: dataToSubmit.ssn_last_four || null,
+        preferred_language: dataToSubmit.preferred_language,
+        marital_status: dataToSubmit.marital_status,
+        other_adults: dataToSubmit.other_adults ?? false,
+        income_sources: dataToSubmit.income_sources,
+        work_situation: dataToSubmit.employment_status,
+        employer_name: dataToSubmit.employer_name || undefined,
+        health_insurance: dataToSubmit.health_insurance,
+        savings_assets: dataToSubmit.savings_assets,
+        monthly_childcare_cost: dataToSubmit.needs_childcare ? (parseFloat(dataToSubmit.monthly_childcare_cost) || 0) : null,
+        childcare_preference: dataToSubmit.childcare_preference || undefined,
+        childcare_provider: dataToSubmit.childcare_provider || undefined,
+        legal_issues: dataToSubmit.legal_issues,
+        urgency: dataToSubmit.urgency,
       });
       updateUser(profileRes.data.data);
 
@@ -434,9 +666,12 @@ export default function EligibilityPage() {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.invalidateQueries({ queryKey: ["deadlines"] });
       setScanComplete(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Benefit Scan Error:", err);
-      if (!isAuthenticated) router.push("/register?redirect=eligibility");
+      setError(
+        err.response?.data?.error?.message ||
+        "An unexpected error occurred during the benefits scan. Please try again."
+      );
     } finally {
       setIsScanning(false);
     }
@@ -628,25 +863,18 @@ export default function EligibilityPage() {
                       <FieldLabel sub="Programs, agencies, and application portals depend on your state.">
                         Which state should we use for your benefits search? *
                       </FieldLabel>
-                      <div className="flex flex-wrap gap-2">
-                        {["GA", "NC"].map((s) => (
-                          <PillButton key={s} active={formData.state === s} onClick={() => set("state", s)}>
-                            {s === "GA" ? "Georgia" : "North Carolina"}
-                          </PillButton>
+                      <select
+                        value={formData.state}
+                        onChange={(e) => set("state", e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-sm transition-all font-medium text-on-surface"
+                      >
+                        <option value="" disabled>Select your state...</option>
+                        {US_STATES.map((s) => (
+                          <option key={s.value} value={s.value}>
+                            {s.label} ({s.value})
+                          </option>
                         ))}
-                        <PillButton active={!["GA", "NC"].includes(formData.state)} onClick={() => {}}>
-                          <span className="text-xs">Other state</span>
-                        </PillButton>
-                        {!["GA", "NC"].includes(formData.state) && (
-                          <select
-                            value={formData.state}
-                            onChange={(e) => set("state", e.target.value)}
-                            className="ml-1 px-3 py-1.5 rounded-lg border border-outline-variant text-sm bg-white focus:border-primary-500 outline-none"
-                          >
-                            {US_STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                          </select>
-                        )}
-                      </div>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -662,11 +890,9 @@ export default function EligibilityPage() {
 
                     <div>
                       <FieldLabel sub="Required for identity verification on all applications.">What's your date of birth? *</FieldLabel>
-                      <input
-                        type="date"
+                      <DateOfBirthDropdowns
                         value={formData.date_of_birth}
-                        onChange={(e) => set("date_of_birth", e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-sm transition-all font-medium text-on-surface"
+                        onChange={(val) => set("date_of_birth", val)}
                       />
                     </div>
 
@@ -819,17 +1045,16 @@ export default function EligibilityPage() {
                         <FieldLabel>Children's birthdates</FieldLabel>
                         <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                           {Array.from({ length: formData.num_children }).map((_, i) => (
-                            <div key={i} className="flex items-center gap-3 p-2 rounded-xl border border-outline-variant/30 bg-surface-container-low">
-                              <span className="text-xs font-bold text-on-surface-variant shrink-0 w-16">Child {i + 1}</span>
-                              <input
-                                type="date"
+                            <div key={i} className="flex flex-col gap-2 p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low">
+                              <span className="text-xs font-bold text-on-surface-variant">Child {i + 1} Birthdate</span>
+                              <DateOfBirthDropdowns
                                 value={formData.children_birthdates[i] || ""}
-                                onChange={(e) => {
+                                onChange={(val) => {
                                   const dates = [...formData.children_birthdates];
-                                  dates[i] = e.target.value;
+                                  dates[i] = val;
                                   set("children_birthdates", dates);
                                 }}
-                                className="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-white focus:border-primary-500 outline-none text-sm font-medium text-on-surface"
+                                isChild={true}
                               />
                             </div>
                           ))}
@@ -1068,7 +1293,15 @@ export default function EligibilityPage() {
                   </>
                 )}
 
-              </div>
+              {error && (
+                <div className="mx-6 mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
+                  <div>
+                    <div className="font-bold">Scan Failed</div>
+                    <div className="text-xs text-red-600 mt-0.5">{error}</div>
+                  </div>
+                </div>
+              )}
 
               {/* Navigation */}
               <div className="flex gap-3 px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low/30 justify-between items-center">

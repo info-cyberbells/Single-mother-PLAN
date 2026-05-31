@@ -81,7 +81,12 @@ export class EligibilityService {
       const aiPrompt = `User Profile: ${JSON.stringify(profile)}\nRule Engine Results: ${JSON.stringify(ruleResults)}\nPrograms: ${JSON.stringify(programs.map(p => ({ id: p.id, name: p.name, description: p.description })))}`;
       
       try {
-        const aiResponse = await this.callClaudeApi(aiPrompt);
+        const aiResponse = await Promise.race([
+          this.callClaudeApi(aiPrompt),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('AI Refinement Timeout')), 6000)
+          ),
+        ]);
         const cleaned = aiResponse.replace(/```json|```/g, '').trim();
         parsedResults = JSON.parse(cleaned);
       } catch (err) {
