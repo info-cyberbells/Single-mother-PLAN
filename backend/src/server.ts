@@ -9,6 +9,15 @@ const startServer = async () => {
     await prisma.$connect();
     console.log('✅ Connected to PostgreSQL database via Prisma ORM');
     dbConnected = true;
+    
+    // Schema migration for program_due_date
+    try {
+      console.log('🔄 Running database schema migration (adding program_due_date to programs table if not exists)...');
+      await prisma.$executeRawUnsafe(`ALTER TABLE "programs" ADD COLUMN IF NOT EXISTS "program_due_date" DATE;`);
+      console.log('✅ Database schema migration complete');
+    } catch (migError: any) {
+      console.warn('⚠️  Database schema migration failed:', migError.message);
+    }
   } catch (dbError: any) {
     if (env.NODE_ENV === 'development') {
       console.warn('⚠️  PostgreSQL connection failed — server starting WITHOUT database.');

@@ -34,4 +34,14 @@ export class DeadlinesController {
       next(error);
     }
   }
+
+  async deleteDeadline(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      await deadlinesService.deleteDeadline(req.params.id, req.user.id, req.user.role);
+      res.status(200).json({ success: true, message: 'Deadline deleted' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

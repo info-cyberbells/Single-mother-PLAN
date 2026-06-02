@@ -18,6 +18,7 @@ import {
   Calendar,
   Sparkles,
   User,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
@@ -56,6 +57,11 @@ const navItems = [
     href: "/dashboard/sessions",
     icon: Calendar,
     label: "Sessions",
+  },
+  {
+    href: "/dashboard/deadlines",
+    icon: Clock,
+    label: "Deadlines",
   },
   {
     href: "/dashboard/profile",
@@ -138,6 +144,8 @@ export function DashboardSidebar() {
       }
     };
     fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {

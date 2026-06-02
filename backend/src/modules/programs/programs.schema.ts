@@ -24,9 +24,10 @@ export const createProgramSchema = z.object({
     eligibility_criteria: z.record(z.any()),
     estimated_monthly_value_min: z.number().min(0),
     estimated_monthly_value_max: z.number().min(0),
-    application_url: z.string().url().nullable().optional(),
-    contact_email: z.string().email().nullable().optional(),
+    application_url: z.string().url().or(z.literal("")).nullable().optional(),
+    contact_email: z.string().email().or(z.literal("")).nullable().optional(),
     is_active: z.boolean().default(true),
+    program_due_date: z.string().datetime().or(z.string()).nullable().optional(),
   }),
 });
 
@@ -44,8 +45,9 @@ export const updateProgramSchema = z.object({
     eligibility_criteria: z.record(z.any()).optional(),
     estimated_monthly_value_min: z.number().min(0).optional(),
     estimated_monthly_value_max: z.number().min(0).optional(),
-    application_url: z.string().url().nullable().optional(),
-    contact_email: z.string().email().nullable().optional(),
+    application_url: z.string().url().or(z.literal("")).nullable().optional(),
+    contact_email: z.string().email().or(z.literal("")).nullable().optional(),
     is_active: z.boolean().optional(),
+    program_due_date: z.string().datetime().or(z.string()).nullable().optional(),
   }),
 });

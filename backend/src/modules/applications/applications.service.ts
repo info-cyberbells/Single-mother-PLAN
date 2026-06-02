@@ -85,7 +85,30 @@ export class ApplicationsService {
       },
     });
 
-    return application;
+    // Link any existing unlinked generated PDFs for this program to the new application
+    await prisma.generatedPdf.updateMany({
+      where: {
+        user_id: userId,
+        program_id: data.program_id,
+        application_id: null,
+      },
+      data: {
+        application_id: application.id,
+      },
+    });
+
+    // Refetch the application with its relations to include generated_pdfs
+    const fullApplication = await prisma.application.findUnique({
+      where: { id: application.id },
+      include: {
+        program: true,
+        generated_pdfs: {
+          orderBy: { generated_at: 'desc' },
+        },
+      },
+    });
+
+    return fullApplication || application;
   }
 
   async updateApplication(

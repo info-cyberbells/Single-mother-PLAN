@@ -19,6 +19,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
 // Auto-refresh token on 401 and redirect to login on failure
 api.interceptors.response.use(
   (response) => response,
@@ -27,6 +39,17 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
 
       try {
         const refreshToken = localStorage.getItem("momplan_refresh_token");
@@ -40,14 +63,20 @@ api.interceptors.response.use(
         localStorage.setItem("momplan_access_token", accessToken);
         localStorage.setItem("momplan_refresh_token", newRefreshToken);
 
+        isRefreshing = false;
+        onRefreshed(accessToken);
+
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
-      } catch {
+      } catch (refreshError) {
+        isRefreshing = false;
+        refreshSubscribers = [];
         localStorage.removeItem("momplan_access_token");
         localStorage.removeItem("momplan_refresh_token");
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }
+        return Promise.reject(refreshError);
       }
     }
 

@@ -71,10 +71,12 @@ interface AuthState {
   // The refresh token lives in an httpOnly cookie managed by the server
   accessToken: string | null;
   isAuthenticated: boolean;
+  isHydrated: boolean;
   setAuth: (user: AuthUser, accessToken: string) => void;
   setAccessToken: (accessToken: string) => void;
   logout: () => void;
   updateUser: (user: Partial<AuthUser>) => void;
+  setHydrated: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -83,6 +85,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       isAuthenticated: false,
+      isHydrated: false,
 
       /**
        * Called after a successful login/register API response.
@@ -112,6 +115,8 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           user: state.user ? { ...state.user, ...partial } : null,
         })),
+
+      setHydrated: () => set({ isHydrated: true }),
     }),
     {
       name: "momplan-user",
@@ -121,8 +126,11 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state: AuthState) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        // accessToken intentionally excluded
+        // accessToken and isHydrated intentionally excluded
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated();
+      },
     } as any
   )
 );

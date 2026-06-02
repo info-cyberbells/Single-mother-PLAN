@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { RulesEngine } from './rules.engine';
 import Anthropic from '@anthropic-ai/sdk';
+import { PdfService } from '../pdf/pdf.service';
 
 export class EligibilityService {
   private anthropic: Anthropic;
@@ -128,6 +129,56 @@ export class EligibilityService {
         });
       })
     );
+
+    // 6. Save a scan-complete notification
+    const qualified = parsedResults.filter(
+      (r) => r.status === 'qualified' || r.status === 'likely_qualified'
+    );
+
+    await prisma.notification.create({
+      data: {
+        user_id: userId,
+        type: 'status_update',
+        title: '🎯 Eligibility Scan Complete',
+        message: `Scan complete: ${qualified.length} program${qualified.length !== 1 ? 's' : ''} matched out of ${parsedResults.length} checked. View your Benefits page for details.`,
+      },
+    }).catch(() => {
+      // Non-critical — swallow if notification creation fails
+    });
+
+    // Start background PDF generation for eligible programs
+    const pdfService = new PdfService();
+    (async () => {
+      for (const res of qualified) {
+        try {
+          console.log(`[Background PDF Generation] Checking/creating application for user ${userId}, program ${res.programId}`);
+          
+          let app = await prisma.application.findFirst({
+            where: { user_id: userId, program_id: res.programId },
+          });
+
+          if (!app) {
+            app = await prisma.application.create({
+              data: {
+                user_id: userId,
+                program_id: res.programId,
+                status: 'draft',
+                priority: 'normal',
+              },
+            });
+            console.log(`[Background PDF Generation] Created draft application ${app.id} for user ${userId}, program ${res.programId}`);
+          }
+
+          console.log(`[Background PDF Generation] Starting PDF generation for user ${userId}, program ${res.programId}, application ${app.id}`);
+          await pdfService.generateApplicationPdf(userId, res.programId, app.id);
+          console.log(`[Background PDF Generation] Completed PDF generation for user ${userId}, program ${res.programId}`);
+        } catch (pdfErr) {
+          console.error(`[Background PDF Generation] Failed for user ${userId}, program ${res.programId}:`, pdfErr);
+        }
+      }
+    })().catch((err) => {
+      console.error('[Background PDF Generation] Uncaught error in background worker:', err);
+    });
 
     return this.getResults(userId);
   }

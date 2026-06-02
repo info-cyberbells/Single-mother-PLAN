@@ -104,7 +104,7 @@ export default function ApplyModal({
           const res = await api.post("/api/applications", { program_id: program.id });
           const newApp = res.data.data;
           setApplicationId(newApp.id);
-          setAttachPdf(false);
+          setAttachPdf(newApp.generated_pdfs && newApp.generated_pdfs.length > 0);
           loadDraft(newApp.id);
           queryClient.invalidateQueries({ queryKey: ["applications"] });
         } catch (err) {

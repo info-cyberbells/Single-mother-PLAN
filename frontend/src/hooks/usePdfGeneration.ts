@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 export interface ValidationReport {
@@ -25,6 +26,7 @@ export interface PendingGenerateParams {
 }
 
 export function usePdfGeneration() {
+  const queryClient = useQueryClient();
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<PdfModalState>({ open: false });
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
@@ -93,6 +95,10 @@ export function usePdfGeneration() {
 
       // Auto-trigger download right after successful generation
       downloadPdf(pdfId, programName);
+
+      // Invalidate applications query to update the UI across components
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["generated-pdfs"] });
     } catch (err) {
       console.error("Failed to generate PDF application packet:", err);
     } finally {

@@ -12,5 +12,6 @@ router.use(authenticate);
 router.get('/', deadlinesController.listDeadlines);
 router.post('/', validate(createDeadlineSchema), deadlinesController.createDeadline);
 router.put('/:id/complete', validate(deadlineIdParamSchema), deadlinesController.completeDeadline);
+router.delete('/:id', validate(deadlineIdParamSchema), deadlinesController.deleteDeadline);
 
 export default router;

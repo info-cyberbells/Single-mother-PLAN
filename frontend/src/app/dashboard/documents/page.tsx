@@ -3,8 +3,8 @@
 import { useState, useRef, Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { Upload, FileText, CheckCircle, XCircle, Loader2, Trash2, Eye, Clock, Edit2, Download } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Upload, FileText, CheckCircle, XCircle, Loader2, Trash2, Eye, Clock, Edit2, Download, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -200,6 +200,7 @@ function DocumentsContent() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [activeTab, setActiveTab] = useState<"uploaded" | "generated">("uploaded");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { viewPdf, downloadPdf, isViewing, isDownloading } = usePdfGeneration();
   const [selectedDocType, setSelectedDocType] = useState<string>(typeParam || "government_id");
 
@@ -218,6 +219,14 @@ function DocumentsContent() {
   const { data: generatedPdfs, isLoading: loadingPdfs } = useQuery({
     queryKey: ["generated-pdfs"],
     queryFn: () => api.get("/api/pdf").then((r) => r.data.data),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/documents/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setDeletingId(null);
+    },
   });
 
   const formatBytes = (bytes: number): string => {
@@ -529,6 +538,13 @@ function DocumentsContent() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => setDeletingId(doc.id)}
+                        title="Delete Document"
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-on-surface-variant hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </Card>
@@ -604,6 +620,55 @@ function DocumentsContent() {
         )
       )}
     </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingId && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-glass-lg w-full max-w-sm p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-on-surface">Delete Document?</h3>
+                  <p className="text-xs text-on-surface-variant">This cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-sm text-on-surface-variant mb-6">
+                This document will be permanently removed from your vault and any linked applications.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => setDeletingId(null)}
+                >
+                  Keep
+                </Button>
+                <button
+                  disabled={deleteMutation.isPending}
+                  onClick={() => deleteMutation.mutate(deletingId)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {deleteMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
   );
 }
 

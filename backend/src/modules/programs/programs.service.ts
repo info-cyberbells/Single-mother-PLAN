@@ -72,10 +72,16 @@ export class ProgramsService {
       application_url?: string | null;
       contact_email?: string | null;
       is_active?: boolean;
+      program_due_date?: string | null;
     }
   ) {
+    const insertData = {
+      ...data,
+      program_due_date: data.program_due_date ? new Date(data.program_due_date) : null,
+    };
+
     const program = await prisma.benefitProgram.create({
-      data,
+      data: insertData,
     });
 
     // Invalidate cache
@@ -104,9 +110,14 @@ export class ProgramsService {
       throw new NotFoundError('Benefit program not found');
     }
 
+    const updateData = { ...data };
+    if (updateData.program_due_date !== undefined) {
+      updateData.program_due_date = updateData.program_due_date ? new Date(updateData.program_due_date) : null;
+    }
+
     const updated = await prisma.benefitProgram.update({
       where: { id },
-      data,
+      data: updateData,
     });
 
     // Invalidate cache

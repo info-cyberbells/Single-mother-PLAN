@@ -37,11 +37,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/**
- * Response interceptor: on 401, attempt a silent token refresh using the
- * httpOnly refresh cookie. The browser sends it automatically because
- * withCredentials=true. No localStorage access needed.
- */
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -49,6 +56,17 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
 
       try {
         // The browser automatically sends the httpOnly mp_rt cookie here.
@@ -60,6 +78,7 @@ api.interceptors.response.use(
         );
 
         const { accessToken } = refreshResponse.data.data;
+        isRefreshing = false;
 
         // Store new access token in memory (window global for interceptor access)
         if (typeof window !== "undefined") {
@@ -74,9 +93,13 @@ api.interceptors.response.use(
           // Store not available (SSR) — continue anyway
         }
 
+        onRefreshed(accessToken);
+
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
-      } catch {
+      } catch (refreshError) {
+        isRefreshing = false;
+        refreshSubscribers = [];
         // Refresh failed — clear auth state and redirect to login
         if (typeof window !== "undefined") {
           window.__momplan_access_token__ = undefined;
@@ -88,6 +111,7 @@ api.interceptors.response.use(
           }
           window.location.href = "/login";
         }
+        return Promise.reject(refreshError);
       }
     }
 

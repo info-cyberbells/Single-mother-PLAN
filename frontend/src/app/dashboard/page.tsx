@@ -334,7 +334,15 @@ export default function DashboardPage() {
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.6}>
             <Card>
               <CardHeader>
-                <CardTitle>Upcoming Deadlines</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Upcoming Deadlines</CardTitle>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/dashboard/deadlines">
+                      View all
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingDeadlines ? (
@@ -427,6 +435,17 @@ export default function DashboardPage() {
                   <Link href="/dashboard/sessions">
                     <Calendar className="w-4 h-4" />
                     Book Counselor Session
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-white hover:bg-white/20 border border-white/20"
+                >
+                  <Link href="/dashboard/deadlines">
+                    <Clock className="w-4 h-4" />
+                    Track Deadlines
                   </Link>
                 </Button>
                 <Button

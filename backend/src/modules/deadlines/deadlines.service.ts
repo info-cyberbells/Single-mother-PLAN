@@ -76,4 +76,11 @@ export class DeadlinesService {
       },
     });
   }
+
+  async deleteDeadline(id: string, userId: string, role: UserRole) {
+    const deadline = await prisma.deadline.findUnique({ where: { id } });
+    if (!deadline) throw new NotFoundError('Deadline not found');
+    if (role === 'user' && deadline.user_id !== userId) throw new ForbiddenError('Access denied');
+    await prisma.deadline.delete({ where: { id } });
+  }
 }

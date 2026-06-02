@@ -11,10 +11,12 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user, updateUser } = useAuthStore();
+  const { isAuthenticated, isHydrated, user, updateUser } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push("/login");
       return;
@@ -31,9 +33,9 @@ export default function DashboardLayout({
       .catch((err) => {
         console.error("Failed to sync user profile:", err);
       });
-  }, [isAuthenticated, router, updateUser]);
+  }, [isHydrated, isAuthenticated, router, updateUser]);
 
-  if (!isAuthenticated) {
+  if (!isHydrated || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" />
