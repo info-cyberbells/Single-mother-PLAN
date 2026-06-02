@@ -34,6 +34,7 @@ const envSchema = z.object({
   S3_BUCKET_NAME: z.string().default('momplan-documents-dev'),
   AWS_REGION: z.string().default('us-east-1'),
   RESEND_API_KEY: z.string().default(''),
+  RESEND_FROM_EMAIL: z.string().default('MomPlan Notifications <notifications@momplan.gov-assist.com>'),
 });
 
 const _env = envSchema.safeParse(process.env);
