@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -366,6 +367,249 @@ const programs = [
   }
 ];
 
+// ---- Partner org seed data ----
+
+const DEMO_ORG_ID      = '00000000-0000-0000-0000-000000000001';
+const DEMO_ADMIN_ID    = '00000000-0000-0000-0000-000000000002';
+const DEMO_CASEWORKER1 = '00000000-0000-0000-0000-000000000003';
+const DEMO_CASEWORKER2 = '00000000-0000-0000-0000-000000000004';
+
+const DEMO_MOTHERS = [
+  { id: '00000000-0000-0000-0001-000000000001', userId: '00000000-0000-0000-0001-000000000101', first: 'Keondra', last: 'Wells', program: 'snap', status: 'renewal_due', caseworker: DEMO_CASEWORKER1 },
+  { id: '00000000-0000-0000-0001-000000000002', userId: '00000000-0000-0000-0001-000000000102', first: 'Desiree', last: 'Williams', program: 'snap', status: 'in_progress', caseworker: DEMO_CASEWORKER1 },
+  { id: '00000000-0000-0000-0001-000000000003', userId: '00000000-0000-0000-0001-000000000103', first: 'Tiffany', last: 'Cruz', program: 'medicaid', status: 'in_progress', caseworker: DEMO_CASEWORKER2 },
+  { id: '00000000-0000-0000-0001-000000000004', userId: '00000000-0000-0000-0001-000000000104', first: 'Aaliyah', last: 'Johnson', program: 'wic', status: 'approved', caseworker: DEMO_CASEWORKER2 },
+  { id: '00000000-0000-0000-0001-000000000005', userId: '00000000-0000-0000-0001-000000000105', first: 'Monica', last: 'Reyes', program: 'tanf', status: 'submitted', caseworker: DEMO_CASEWORKER1 },
+  { id: '00000000-0000-0000-0001-000000000006', userId: '00000000-0000-0000-0001-000000000106', first: 'Jasmine', last: 'Porter', program: 'ccdf', status: 'approved', caseworker: DEMO_CASEWORKER2 },
+  { id: '00000000-0000-0000-0001-000000000007', userId: '00000000-0000-0000-0001-000000000107', first: 'Latoya', last: 'Mitchell', program: 'section8', status: 'not_started', caseworker: DEMO_CASEWORKER1 },
+];
+
+function daysFromNow(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+async function seedPartnerOrg() {
+  console.log('Seeding demo partner organization...');
+
+  const password_hash = await bcrypt.hash('Admin1234!', 10);
+
+  await prisma.organization.upsert({
+    where:  { id: DEMO_ORG_ID },
+    update: { onboarding_completed: true },
+    create: {
+      id:            DEMO_ORG_ID,
+      org_name:      'Blossom Community Hub',
+      category:      'Non-profit (501c3)',
+      org_type:      'nonprofit_501c3',
+      website:       'https://www.blossomcommunityhub.org',
+      description:   'Connecting underserved mothers and families to the benefits, resources, and community they deserve.',
+      purpose:       'Connecting underserved mothers and families to the benefits, resources, and community they deserve.',
+      phone:         '+1 (404) 555-0192',
+      address:       '250 Peachtree St NW, Suite 400',
+      city:          'Atlanta',
+      state:         'GA',
+      zip_code:      '30303',
+      country:       'United States',
+      contact_email: 'hello@blossomcommunityhub.org',
+      email:         'hello@blossomcommunityhub.org',
+      employees:     '11-50',
+      founded:       '2018',
+      tax_id:        '82-1234567',
+      linkedin:      'https://linkedin.com/company/blossom-community-hub',
+      onboarding_completed: true,
+    },
+  });
+
+  await prisma.orgUser.upsert({
+    where:  { id: DEMO_ADMIN_ID },
+    update: {},
+    create: {
+      id: DEMO_ADMIN_ID, full_name: 'K. Marshall', email: 'admin@blossomcommunityhub.org',
+      password_hash, role: 'admin', org_id: DEMO_ORG_ID, is_active: true, must_change_password: false,
+    },
+  });
+
+  await prisma.orgUser.upsert({
+    where:  { id: DEMO_CASEWORKER1 },
+    update: {},
+    create: {
+      id: DEMO_CASEWORKER1, full_name: 'R. Patel', email: 'rpatel@blossomcommunityhub.org',
+      password_hash, role: 'caseworker', org_id: DEMO_ORG_ID, is_active: true, caseload_capacity: 30,
+      must_change_password: false,
+    },
+  });
+
+  await prisma.orgUser.upsert({
+    where:  { id: DEMO_CASEWORKER2 },
+    update: {},
+    create: {
+      id: DEMO_CASEWORKER2, full_name: 'S. Nguyen', email: 'snguyen@blossomcommunityhub.org',
+      password_hash, role: 'caseworker', org_id: DEMO_ORG_ID, is_active: true, caseload_capacity: 25,
+      must_change_password: false,
+    },
+  });
+
+  const quarter = 'Q2';
+  let caseIdx = 0;
+
+  for (const m of DEMO_MOTHERS) {
+    caseIdx++;
+    const caseId = `00000000-0000-0000-0002-00000000000${caseIdx}`;
+
+    await prisma.user.upsert({
+      where: { email: `${m.first.toLowerCase()}.demo@momplan.test` },
+      update: { first_name: m.first, last_name: m.last },
+      create: {
+        id: m.userId,
+        email: `${m.first.toLowerCase()}.demo@momplan.test`,
+        first_name: m.first,
+        last_name: m.last,
+        password_hash: '',
+      },
+    });
+
+    await prisma.familyProfile.upsert({
+      where: { user_id: m.userId },
+      update: {
+        first_name: m.first,
+        last_name: m.last,
+        phone: '(404) 555-0193',
+        email: `${m.first.toLowerCase()}.demo@momplan.test`,
+        street_address: '241 Peach St',
+        city: 'Atlanta',
+        state: 'GA',
+        zip_code: '30314',
+        household_size: 3,
+        num_children: 2,
+        monthly_income: 1840,
+        preferred_contact: 'text',
+        preferred_language: 'English',
+        postpartum_months_since_birth: m.first === 'Desiree' ? 7 : undefined,
+        children_dobs: m.first === 'Desiree' ? ['2020-03-15', '2025-11-01'] : ['2019-06-10'],
+      },
+      create: {
+        user_id: m.userId,
+        first_name: m.first,
+        last_name: m.last,
+        phone: '(404) 555-0193',
+        email: `${m.first.toLowerCase()}.demo@momplan.test`,
+        street_address: '241 Peach St',
+        city: 'Atlanta',
+        state: 'GA',
+        zip_code: '30314',
+        household_size: 3,
+        num_children: 2,
+        monthly_income: 1840,
+        preferred_contact: 'text',
+        preferred_language: 'English',
+        postpartum_months_since_birth: m.first === 'Desiree' ? 7 : null,
+        children_dobs: m.first === 'Desiree' ? ['2020-03-15', '2025-11-01'] : ['2019-06-10'],
+      },
+    });
+
+    await prisma.mother.upsert({
+      where: { id: m.id },
+      update: {},
+      create: {
+        id: m.id,
+        user_id: m.userId,
+        caseworker_id: m.caseworker,
+        dob: new Date('1994-03-02'),
+        phone: '(404) 555-0193',
+        address: '241 Peach St, Atlanta, GA 30314',
+        enrollment_status: 'enrolled',
+      },
+    });
+
+    await prisma.partnerCase.upsert({
+      where: { id: caseId },
+      update: { status: m.status, quarter },
+      create: {
+        id: caseId,
+        mother_id: m.id,
+        caseworker_id: m.caseworker,
+        program_id: m.program,
+        status: m.status,
+        urgency_level: m.status === 'renewal_due' ? 'high' : 'normal',
+        quarter,
+        intake_date: new Date('2025-04-02'),
+        last_activity: new Date(),
+      },
+    });
+
+    const deadlineDays = m.first === 'Desiree' ? 1 : m.status === 'renewal_due' ? 5 : 20 + caseIdx * 3;
+    await prisma.caseDeadline.upsert({
+      where: { id: `00000000-0000-0000-0003-00000000000${caseIdx}` },
+      update: { due_date: daysFromNow(deadlineDays) },
+      create: {
+        id: `00000000-0000-0000-0003-00000000000${caseIdx}`,
+        case_id: caseId,
+        type: m.status === 'renewal_due' || m.first === 'Desiree' ? 'renewal' : 'document_upload',
+        due_date: daysFromNow(deadlineDays),
+        is_resolved: false,
+      },
+    });
+
+    const docs = [
+      { type: 'Proof of income', status: 'pending' as const, hasFile: false },
+      { type: 'Proof of residency', status: 'pending' as const, hasFile: false },
+      { type: 'Government-issued ID', status: 'approved' as const, hasFile: true },
+    ];
+    if (m.first === 'Desiree') {
+      docs.push({ type: 'Birth certificate — Jaylen', status: 'approved' as const, hasFile: true });
+      docs.push({ type: 'SNAP renewal form', status: 'pending' as const, hasFile: true });
+    }
+
+    for (let di = 0; di < docs.length; di++) {
+      const doc = docs[di];
+      await prisma.caseDocument.upsert({
+        where: { id: `00000000-0000-0000-0004-${String(caseIdx).padStart(4, '0')}${String(di).padStart(8, '0')}` },
+        update: {},
+        create: {
+          id: `00000000-0000-0000-0004-${String(caseIdx).padStart(4, '0')}${String(di).padStart(8, '0')}`,
+          case_id: caseId,
+          doc_type: doc.type,
+          file_url: doc.hasFile ? `uploads/demo/${caseId}/${doc.type.replace(/\s/g, '_')}.pdf` : '',
+          review_status: doc.status,
+        },
+      });
+    }
+
+    await prisma.communication.upsert({
+      where: { id: `00000000-0000-0000-0005-00000000000${caseIdx}` },
+      update: {},
+      create: {
+        id: `00000000-0000-0000-0005-00000000000${caseIdx}`,
+        case_id: caseId,
+        sent_by: m.caseworker,
+        type: m.first === 'Desiree' ? 'document_request' : 'status_update',
+        channel: 'email',
+        message: m.first === 'Desiree' ? 'Document request sent' : 'Approval letter sent',
+        sent_at: new Date(),
+        delivery_status: 'sent',
+      },
+    });
+
+    await prisma.statusHistory.upsert({
+      where: { id: `00000000-0000-0000-0006-00000000000${caseIdx}` },
+      update: {},
+      create: {
+        id: `00000000-0000-0000-0006-00000000000${caseIdx}`,
+        case_id: caseId,
+        changed_by: m.caseworker,
+        old_status: 'not_started',
+        new_status: m.status,
+        notes: m.status === 'approved' ? 'Postpartum Medicaid approved' : undefined,
+      },
+    });
+  }
+
+  console.log('Demo org seeded — email: admin@blossomcommunityhub.org  password: Admin1234!');
+}
+
 async function main() {
   console.log('Seeding benefit programs with structured metadata...');
 
@@ -404,6 +648,7 @@ async function main() {
     });
   }
 
+  await seedPartnerOrg();
   console.log('Seed completed successfully.');
 }
 

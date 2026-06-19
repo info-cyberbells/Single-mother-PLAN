@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Settings, Shield, Bell, Globe, Key, Save, Server, Loader2 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useAuthStore } from "@/store/auth.store";
 import { api } from "@/lib/api";
+import { TwoFactorModal } from "@/components/admin/TwoFactorModal";
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
   const [apiUrl, setApiUrl] = useState(
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3636"
   );
 
   // Change Password state
@@ -21,6 +22,25 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [isPending, setIsPending] = useState(false);
+
+  // 2FA state
+  const [is2faEnabled, setIs2faEnabled] = useState(false);
+  const [is2faModalOpen, setIs2faModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIs2faEnabled(localStorage.getItem("admin_2fa_enabled") === "true");
+    }
+  }, []);
+
+  const toggle2FA = (enable: boolean) => {
+    setIs2faEnabled(enable);
+    if (enable) {
+      localStorage.setItem("admin_2fa_enabled", "true");
+    } else {
+      localStorage.removeItem("admin_2fa_enabled");
+    }
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,12 +189,20 @@ export default function SettingsPage() {
             Security
           </h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+            <div className={`flex items-center justify-between p-4 rounded-xl border ${is2faEnabled ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-800/40 border-slate-700/50'}`}>
               <div>
-                <div className="text-sm font-medium text-slate-200">Two-Factor Authentication</div>
+                <div className="text-sm font-medium text-slate-200">
+                  Two-Factor Authentication
+                  {is2faEnabled && <span className="ml-2 text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Enabled</span>}
+                </div>
                 <div className="text-xs text-slate-500 mt-0.5">Add an extra layer of security</div>
               </div>
-              <button className="btn-secondary text-xs py-2">Enable 2FA</button>
+              <button 
+                onClick={() => is2faEnabled ? toggle2FA(false) : setIs2faModalOpen(true)}
+                className={`text-xs py-2 ${is2faEnabled ? 'btn-secondary text-red-400 hover:text-red-300 hover:border-red-500/30' : 'btn-secondary'}`}
+              >
+                {is2faEnabled ? "Disable 2FA" : "Enable 2FA"}
+              </button>
             </div>
             
             <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/50 space-y-4">
@@ -253,6 +281,12 @@ export default function SettingsPage() {
           </div>
         </motion.div>
       </main>
+
+      <TwoFactorModal 
+        isOpen={is2faModalOpen} 
+        onClose={() => setIs2faModalOpen(false)} 
+        onEnable={() => toggle2FA(true)} 
+      />
     </>
   );
 }

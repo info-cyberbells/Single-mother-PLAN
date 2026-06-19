@@ -5,7 +5,8 @@ import { UnauthorizedError, ForbiddenError } from '../utils/errors';
 import { UserRole, UserPlan } from '@prisma/client';
 
 interface JwtPayload {
-  id: string;
+  userId: string;
+  id?: string;  // backwards compat
   email: string;
   role: UserRole;
   plan: UserPlan;
@@ -31,11 +32,41 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
-    req.user = decoded;
+    req.user = {
+      id: decoded.userId ?? decoded.id ?? '',
+      email: decoded.email,
+      role: decoded.role,
+      plan: decoded.plan,
+    };
     return next();
   } catch {
     return next(new UnauthorizedError('Invalid or expired authentication token'));
   }
+};
+
+export const optionalAuthenticate = (req: Request, res: Response, next: NextFunction): void => {
+  let token: string | undefined;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+  if (!token && req.cookies) {
+    token = req.cookies.mp_at;
+  }
+  if (!token) return next();
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    req.user = {
+      id: decoded.userId ?? decoded.id ?? '',
+      email: decoded.email,
+      role: decoded.role,
+      plan: decoded.plan,
+    };
+  } catch {
+    // Ignore invalid tokens for optional auth routes
+  }
+  return next();
 };
 
 export const authorizeRoles = (...roles: UserRole[]) => {
@@ -46,3 +77,4 @@ export const authorizeRoles = (...roles: UserRole[]) => {
     return next();
   };
 };
+

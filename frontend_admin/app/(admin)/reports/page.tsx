@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Download, Calendar, TrendingUp, Users, ClipboardList } from "lucide-react";
+import { FileText, Download, Calendar, TrendingUp, Users, ClipboardList, Loader2 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { ReportPreviewModal } from "@/components/admin/ReportPreviewModal";
 
 const REPORT_TYPES = [
   {
@@ -47,6 +49,28 @@ const colorMap = {
 };
 
 export default function ReportsPage() {
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const exportCSV = (report: any) => {
+    const csvContent = "Metric,Value\nSample 1,100\nSample 2,200\n";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${report.id}_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const generateReport = async () => {
+    setGenerating(true);
+    await new Promise(res => setTimeout(res, 1200));
+    exportCSV({ id: "custom_report" });
+    setGenerating(false);
+  };
+
   return (
     <>
       <TopBar title="Reports" subtitle="Generate and export operational reports" />
@@ -73,11 +97,11 @@ export default function ReportsPage() {
                     ))}
                   </div>
                   <div className="flex gap-3">
-                    <button className="btn-secondary text-xs py-2 gap-2">
+                    <button onClick={() => setSelectedReport(report)} className="btn-secondary text-xs py-2 gap-2">
                       <FileText className="w-3.5 h-3.5" />
                       Preview
                     </button>
-                    <button className="btn-primary text-xs py-2 gap-2">
+                    <button onClick={() => exportCSV(report)} className="btn-primary text-xs py-2 gap-2">
                       <Download className="w-3.5 h-3.5" />
                       Export CSV
                     </button>
@@ -118,14 +142,21 @@ export default function ReportsPage() {
               </select>
             </div>
             <div className="flex items-end">
-              <button className="btn-primary">
-                <Download className="w-4 h-4" />
-                Generate
+              <button onClick={generateReport} disabled={generating} className="btn-primary">
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {generating ? "Generating..." : "Generate"}
               </button>
             </div>
           </div>
         </motion.div>
       </main>
+
+      <ReportPreviewModal 
+        report={selectedReport} 
+        isOpen={!!selectedReport} 
+        onClose={() => setSelectedReport(null)}
+        onExport={exportCSV}
+      />
     </>
   );
 }

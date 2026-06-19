@@ -13,6 +13,11 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 2FA specific states
+  const [step, setStep] = useState<1 | 2>(1);
+  const [otp, setOtp] = useState("");
+  const [tempAuthData, setTempAuthData] = useState<any>(null);
+
   const { setAuth } = useAuthStore();
   const router = useRouter();
 
@@ -31,12 +36,44 @@ export default function AdminLoginPage() {
         return;
       }
 
-      setAuth(user, accessToken, refreshToken);
-      router.push("/dashboard");
+      const is2faEnabled = localStorage.getItem("admin_2fa_enabled") === "true";
+
+      if (is2faEnabled) {
+        setTempAuthData({ user, accessToken, refreshToken });
+        setStep(2);
+      } else {
+        setAuth(user, accessToken, refreshToken);
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Invalid credentials. Please try again."
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      // Mock network delay
+      await new Promise((res) => setTimeout(res, 800));
+
+      if (otp.length < 6) {
+        throw new Error("Invalid verification code. Please enter 6 digits.");
+      }
+
+      // Success
+      if (tempAuthData) {
+        setAuth(tempAuthData.user, tempAuthData.accessToken, tempAuthData.refreshToken);
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(err.message || "Invalid code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -79,74 +116,130 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Email Address
-              </label>
-              <input
-                id="admin-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@momplan.com"
-                required
-                className="input"
-                autoComplete="email"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Password
-              </label>
-              <div className="relative">
+          {step === 1 ? (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Email Address
+                </label>
                 <input
-                  id="admin-password"
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  id="admin-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@momplan.com"
                   required
-                  className="input pr-11"
-                  autoComplete="current-password"
+                  className="input"
+                  autoComplete="email"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="admin-password"
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="input pr-11"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-rose-400">{error}</p>
+                </div>
+              )}
+
+              <button
+                id="admin-login-submit"
+                type="submit"
+                disabled={loading}
+                className="btn-primary w-full justify-center py-3 text-base mt-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Authenticating…
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4" />
+                    Sign In to Admin Portal
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerify2FA} className="space-y-5 animate-fade-in">
+              <div className="text-center mb-6">
+                <p className="text-sm text-slate-400">
+                  Enter the 6-digit verification code from your authenticator app.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center block">
+                  Verification Code
+                </label>
+                <input
+                  id="admin-otp"
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
+                  placeholder="000 000"
+                  required
+                  autoFocus
+                  className="input w-full text-center text-2xl tracking-[0.5em] font-mono py-4"
+                  autoComplete="one-time-code"
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-rose-400">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  onClick={() => setStep(1)}
+                  disabled={loading}
+                  className="btn-secondary py-3 flex-1 justify-center"
                 >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  Back
+                </button>
+                <button
+                  id="admin-2fa-submit"
+                  type="submit"
+                  disabled={loading || otp.length < 6}
+                  className="btn-primary flex-[2] justify-center py-3 text-base"
+                >
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    "Verify & Login"
+                  )}
                 </button>
               </div>
-            </div>
-
-            {error && (
-              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-rose-400">{error}</p>
-              </div>
-            )}
-
-            <button
-              id="admin-login-submit"
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full justify-center py-3 text-base mt-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Authenticating…
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4" />
-                  Sign In to Admin Portal
-                </>
-              )}
-            </button>
-          </form>
+            </form>
+          )}
         </div>
 
         <p className="text-center text-xs text-slate-700 mt-6">

@@ -2,6 +2,7 @@ import { prisma } from '../../config/prisma';
 import { RulesEngine } from './rules.engine';
 import Anthropic from '@anthropic-ai/sdk';
 import { PdfService } from '../pdf/pdf.service';
+import { getProgramRequirements } from '../pdf/program-requirements.data';
 
 export class EligibilityService {
   private anthropic: Anthropic;
@@ -24,9 +25,25 @@ export class EligibilityService {
     }
 
     const profile = user.family_profile;
+    const userState = (user.state || profile.state || 'GA').toUpperCase();
 
-    // 2. Get all benefit programs
-    const programs = await prisma.benefitProgram.findMany();
+    // 2. Get benefit programs relevant to user's state or federal
+    const programs = await prisma.benefitProgram.findMany({
+      where: {
+        is_active: true,
+        OR: [
+          { state_code: null },
+          { state_code: '' },
+          { state_code: { equals: userState, mode: 'insensitive' } },
+          {
+            federal_or_state: {
+              contains: 'federal',
+              mode: 'insensitive',
+            },
+          },
+        ],
+      },
+    });
 
     // 3. Run Deterministic Rules Engine
     const rulesEngine = new RulesEngine();
@@ -102,7 +119,12 @@ export class EligibilityService {
       }
     }
 
-    // 5. Save results to database (parallel upserts for speed)
+    // 5. Clear old eligibility results first to avoid stale programs from different states
+    await prisma.eligibilityResult.deleteMany({
+      where: { user_id: userId },
+    });
+
+    // Save results to database (parallel upserts for speed)
     await Promise.all(
       parsedResults.map((res) => {
         const program = programs.find((p) => p.id === res.programId);
@@ -167,6 +189,35 @@ export class EligibilityService {
               },
             });
             console.log(`[Background PDF Generation] Created draft application ${app.id} for user ${userId}, program ${res.programId}`);
+
+            // Link matching unlinked documents to this newly created application
+            try {
+              const prog = programs.find((p) => p.id === res.programId);
+              if (prog) {
+                const requirements = getProgramRequirements(prog.name);
+                if (requirements) {
+                  const docTypesToLink = [
+                    ...requirements.required_documents,
+                    ...requirements.optional_documents,
+                  ];
+                  if (docTypesToLink.length > 0) {
+                    await prisma.document.updateMany({
+                      where: {
+                        user_id: userId,
+                        application_id: null,
+                        document_type: { in: docTypesToLink },
+                      },
+                      data: {
+                        application_id: app.id,
+                      },
+                    });
+                    console.log(`[Background PDF Generation] Auto-linked matching documents for app ${app.id}`);
+                  }
+                }
+              }
+            } catch (linkErr: any) {
+              console.error(`[Background PDF Generation] Failed to auto-link documents for app ${app.id}:`, linkErr.message);
+            }
           }
 
           console.log(`[Background PDF Generation] Starting PDF generation for user ${userId}, program ${res.programId}, application ${app.id}`);

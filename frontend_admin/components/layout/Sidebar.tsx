@@ -37,7 +37,7 @@ const navGroups = [
       { href: "/users", label: "Users", icon: Users },
       { href: "/applications", label: "Applications", icon: ClipboardList },
       { href: "/programs", label: "Programs", icon: BookOpen },
-      { href: "/counselors", label: "Counselors", icon: UserCircle2 },
+      { href: "/counselors", label: "Caseworkers", icon: UserCircle2 },
       { href: "/pdfs", label: "PDFs", icon: FileText },
     ],
   },
@@ -66,7 +66,7 @@ export function Sidebar() {
   const handleLogout = async () => {
     try {
       await api.post("/api/auth/logout");
-    } catch {}
+    } catch { }
     logout();
     router.push("/login");
   };

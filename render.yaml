@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: "5000"
+        value: "3636"
       # The following must be set manually in the Render Dashboard:
       # - DATABASE_URL
       # - DIRECT_URL

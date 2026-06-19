@@ -6,6 +6,7 @@ export const apiLimiter = rateLimit({
   limit: 100,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'development',
   message: {
     success: false,
     error: {
@@ -21,6 +22,7 @@ export const authLimiter = rateLimit({
   limit: 20,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'development',
   message: {
     success: false,
     error: {

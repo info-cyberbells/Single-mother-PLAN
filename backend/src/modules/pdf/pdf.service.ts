@@ -420,6 +420,9 @@ Write the eligibility summary for this applicant's application packet.`;
 
       // Render each document row
       for (const item of allProgramDocs) {
+        if (doc.y + 20 > 700) {
+          doc.addPage();
+        }
         const rowY = doc.y;
         const label = getDocumentLabel(item.type);
 
@@ -429,7 +432,7 @@ Write the eligibility summary for this applicant's application packet.`;
           doc.font('Helvetica-Bold').fontSize(8).fillColor('#166534')
              .text(`✓ ${label}`, COL.type, rowY, { width: 145 });
           doc.font('Helvetica').fontSize(8).fillColor('#15803d')
-             .text(item.uploaded.display_name, COL.name, rowY, { width: 220, ellipsis: true });
+             .text(item.uploaded.display_name || 'Unnamed Document', COL.name, rowY, { width: 220, ellipsis: true });
           doc.font('Helvetica-Bold').fontSize(8).fillColor('#16a34a')
              .text('Attached', COL.status, rowY);
         } else if (item.required) {
@@ -476,6 +479,10 @@ Write the eligibility summary for this applicant's application packet.`;
 
         missingRequiredDocs.forEach((item, idx) => {
           const meta = DOCUMENT_META[item.type];
+          const blockHeight = meta ? 75 : 40;
+          if (doc.y + blockHeight > 700) {
+            doc.addPage();
+          }
           const rowTop = doc.y;
 
           // Numbered block background
@@ -508,6 +515,9 @@ Write the eligibility summary for this applicant's application packet.`;
         doc.moveDown(1.2);
 
         missingRequiredDocs.forEach(item => {
+          if (doc.y + 20 > 700) {
+            doc.addPage();
+          }
           const label = DOCUMENT_META[item.type]?.label ?? getDocumentLabel(item.type);
           doc.font('Helvetica').fontSize(9).fillColor(darkColor)
              .text(`☐  ${label}`, 64, doc.y, { lineGap: 1.5 });
@@ -599,7 +609,7 @@ Write the eligibility summary for this applicant's application packet.`;
     const { pdfBuffer, validationReport, uuid } = await this.generatePdfBuffer(userId, programId, applicationId);
 
     // ── File persistence ────────────────────────────────────────────────────
-    const isS3Placeholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    const isS3Placeholder = !env.AWS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID.includes('placeholder');
     let file_url = '';
 
     if (isS3Placeholder) {
@@ -653,7 +663,7 @@ Write the eligibility summary for this applicant's application packet.`;
 
     const { pdfBuffer } = await this.generatePdfBuffer(pdf.user_id, pdf.program_id, pdf.application_id || undefined, pdf.id);
 
-    const isS3Placeholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    const isS3Placeholder = !env.AWS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID.includes('placeholder');
     if (isS3Placeholder || !pdf.file_url.startsWith('http')) {
       const relativeDir = path.join('uploads', 'pdfs', pdf.user_id);
       const dir = path.join(process.cwd(), relativeDir);
@@ -693,9 +703,9 @@ Write the eligibility summary for this applicant's application packet.`;
     if (!pdf) throw new Error('PDF not found');
     if (role !== 'admin' && role !== 'counselor' && pdf.user_id !== userId) throw new Error('Access denied to this PDF');
 
-    const isPlaceholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    const isPlaceholder = !env.AWS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID.includes('placeholder');
     if (isPlaceholder) {
-      const baseUrl = backendUrl || `${env.FRONTEND_URL.replace(/:3000|:3001/, ':5000')}`;
+      const baseUrl = backendUrl || `${env.FRONTEND_URL.replace(/:3637|:3638/, ':3636')}`;
       return `${baseUrl}/api/pdf/${pdfId}/download/stream`;
     } else {
       const key = pdf.file_url.split('.amazonaws.com/').pop() || '';
@@ -746,8 +756,9 @@ Write the eligibility summary for this applicant's application packet.`;
     return `${percentage}%`;
   }
 
-  private slugToTitle(slug: string): string {
-    return slug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  private slugToTitle(slug: string | null | undefined): string {
+    if (!slug) return 'N/A';
+    return String(slug).split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
   private getProgramSpecificTitle(programName: string): string {

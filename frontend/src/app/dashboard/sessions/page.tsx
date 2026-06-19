@@ -37,7 +37,7 @@ export default function SessionsPage() {
   const { data: counselors } = useQuery({
     queryKey: ["counselors"],
     queryFn: () =>
-      api.get("/api/admin/users?role=counselor&limit=20").then((r) => r.data.data),
+      api.get("/api/user/counselors").then((r) => r.data.data),
   });
 
   const {

@@ -213,7 +213,7 @@ export class DocumentsService {
   ) {
     const fileExtension = file.originalname.split('.').pop() || '';
     const uniqueKey = `documents/${userId}/${crypto.randomUUID()}.${fileExtension}`;
-    const isPlaceholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    const isPlaceholder = !env.AWS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID.includes('placeholder');
 
     let file_url = '';
 
@@ -262,7 +262,7 @@ export class DocumentsService {
     if (!doc) throw new NotFoundError('Document not found');
     if (role === 'user' && doc.user_id !== userId) throw new ForbiddenError('Access denied to view this document');
 
-    const isPlaceholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    const isPlaceholder = !env.AWS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID.includes('placeholder');
 
     if (isPlaceholder) {
       let filePath = doc.file_url;
@@ -329,7 +329,7 @@ export class DocumentsService {
       throw new ForbiddenError('Access denied to delete this document');
     }
 
-    const isPlaceholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    const isPlaceholder = !env.AWS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID.includes('placeholder');
 
     if (isPlaceholder) {
       try {

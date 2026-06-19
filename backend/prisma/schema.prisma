@@ -18,6 +18,9 @@ enum UserPlan {
   free
   family
   navigator
+  community
+  partner
+  network
 }
 
 enum UserStatus {
@@ -85,7 +88,22 @@ model User {
   appointments           Appointment[]
   pdf_generations        PdfGeneration[]
   reminders              Reminder[]
+  mother_profile         Mother?             @relation("MotherUser")
+  organization           Organization?       @relation("OrgMembers", fields: [org_id], references: [id], onDelete: SetNull)
+  billing_organization   Organization?       @relation("OrganizationBillingUser")
+  subscriptions          Subscription[]
+  payments               Payment[]
+  billing_events         BillingEvent[]
+  refresh_tokens         RefreshToken[]
+  application_submissions ApplicationSubmission[]
 
+  org_id                 String?             @db.Uuid
+  org_type               String?
+  first_name             String              @default("")
+  middle_name            String?
+  last_name              String              @default("")
+
+  @@index([org_id])
   @@map("users")
 }
 
@@ -221,6 +239,8 @@ model BenefitProgram {
   documents_required          DocumentRequired[]
   income_thresholds           IncomeThreshold[]
   reminders                   Reminder[]
+  partner_cases               PartnerCase[]       @relation("PartnerCaseProgram")
+  quarter_due_dates           ProgramQuarterDueDate[]
 
   @@map("programs")
 }
@@ -275,6 +295,8 @@ model Application {
   notifications     Notification[]
   deadlines         Deadline[]
   generated_pdfs    GeneratedPdf[]
+  partner_cases     PartnerCase[]
+  submissions       ApplicationSubmission[]
 
   @@index([user_id])
   @@index([program_id])
@@ -370,6 +392,7 @@ model GeneratedPdf {
   status          String      @default("generated") // generated | attached | sent
   validation_report Json?     // missing fields/docs at generation time
   generated_at    DateTime    @default(now()) @db.Timestamptz
+  submissions     ApplicationSubmission[]
 
   @@index([user_id])
   @@index([program_id])
@@ -495,14 +518,34 @@ model Organization {
   active            Boolean      @default(true)
   created_at        DateTime?    @default(now()) @db.Timestamptz
   updated_at        DateTime?    @default(now()) @db.Timestamptz
-  service_tags      String[]     @default([])
-  referral_notes    String?
+  service_tags             String[]     @default([])
+  referral_notes           String?
+  org_type                 String?
+  billing_user_id          String?      @unique @db.Uuid
+  onboarding_completed     Boolean      @default(false)
+  tagline                  String?
+  description              String?
+  services_offered         String?
+  service_area             String?
+  primary_language         String?      @default("English")
+  notification_frequency   String?      @default("daily")
+  case_numbering_prefix    String?      @default("CASE")
+  country                  String?
+  employees                String?
+  founded                  String?
+  tax_id                   String?
+  linkedin                 String?
+  contact_email            String?
 
   // Relations
   services          OrgService[]
   results           EligibilityResult[]
   appointments      Appointment[]
+  users             User[]               @relation("OrgMembers")
+  org_users         OrgUser[]            @relation("OrgUserOrganization")
+  billing_user      User?                @relation("OrganizationBillingUser", fields: [billing_user_id], references: [id], onDelete: SetNull)
 
+  @@index([org_type])
   @@map("organizations")
 }
 
@@ -543,6 +586,440 @@ model Reminder {
   reminder_date DateTime?      @db.Date
   dismissed     Boolean        @default(false)
   created_at    DateTime?      @default(now()) @db.Timestamptz
+  updated_at    DateTime       @default(now()) @db.Timestamptz
 
   @@map("reminders")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PARTNER PORTAL MODELS
+// ─────────────────────────────────────────────────────────────
+
+model OrgUser {
+  id                   String             @id @default(uuid()) @db.Uuid
+  full_name            String
+  email                String             @unique
+  role                 OrgUserRole        @default(caseworker)
+  org_id               String             @db.Uuid
+  caseload_capacity    Int?
+  is_active            Boolean            @default(true)
+  created_at           DateTime           @default(now()) @db.Timestamptz
+  last_login           DateTime?          @db.Timestamptz
+  password_hash        String
+  must_change_password Boolean            @default(true)
+  updated_at           DateTime           @default(now()) @db.Timestamptz
+  reviewed_documents   CaseDocument[]     @relation("CaseDocumentReviewer")
+  recorded_outcomes    CaseOutcome[]      @relation("CaseOutcomeRecordedBy")
+  cases                PartnerCase[]      @relation("PartnerCaseCaseworker")
+  caseworker_metrics   CaseworkerMetric[] @relation("CaseworkerMetricCaseworker")
+  communications       Communication[]    @relation("CommunicationSentBy")
+  flags                CaseFlag[]         @relation("CaseFlagFlaggedBy")
+  mothers              Mother[]           @relation("MotherCaseworker")
+  refresh_tokens       OrgRefreshToken[]  @relation("OrgRefreshTokenUser")
+  referrals            Referral[]         @relation("ReferralReferredBy")
+  status_changes       StatusHistory[]    @relation("StatusHistoryChangedBy")
+  organization         Organization       @relation("OrgUserOrganization", fields: [org_id], references: [id], onDelete: Cascade)
+
+  @@index([org_id])
+  @@map("org_users")
+}
+
+model OrgRefreshToken {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token       String   @unique
+  org_user_id String   @db.Uuid
+  revoked     Boolean  @default(false)
+  expires_at  DateTime @db.Timestamptz
+  created_at  DateTime @default(now()) @db.Timestamptz
+  orgUser     OrgUser  @relation("OrgRefreshTokenUser", fields: [org_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([org_user_id])
+  @@map("org_refresh_tokens")
+}
+
+model Mother {
+  id                String           @id @default(uuid()) @db.Uuid
+  user_id           String?          @unique @db.Uuid
+  caseworker_id     String?          @db.Uuid
+  dob               DateTime?        @db.Date
+  phone             String?
+  address           String?
+  enrollment_status EnrollmentStatus @default(pending)
+  created_at        DateTime         @default(now()) @db.Timestamptz
+  updated_at        DateTime         @default(now()) @db.Timestamptz
+  cases             PartnerCase[]    @relation("PartnerCaseMother")
+  caseworker        OrgUser?         @relation("MotherCaseworker", fields: [caseworker_id], references: [id])
+  user              User?            @relation("MotherUser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([caseworker_id])
+  @@map("mothers")
+}
+
+model PartnerCase {
+  id                  String          @id @default(uuid()) @db.Uuid
+  mother_id           String          @db.Uuid
+  caseworker_id       String?         @db.Uuid
+  program_id          String
+  application_id      String?         @db.Uuid
+  status              String
+  urgency_level       String?
+  quarter             String?
+  intake_date         DateTime?       @db.Date
+  last_activity       DateTime?       @db.Timestamptz
+  secure_submitted_at DateTime?       @db.Timestamptz
+  created_at          DateTime        @default(now()) @db.Timestamptz
+  updated_at          DateTime        @updatedAt @db.Timestamptz
+  deadlines           CaseDeadline[]  @relation("CaseDeadlineCase")
+  documents           CaseDocument[]  @relation("CaseDocumentCase")
+  outcomes            CaseOutcome[]   @relation("CaseOutcomeCase")
+  application         Application?    @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  caseworker          OrgUser?        @relation("PartnerCaseCaseworker", fields: [caseworker_id], references: [id])
+  mother              Mother          @relation("PartnerCaseMother", fields: [mother_id], references: [id], onDelete: Cascade)
+  program             BenefitProgram  @relation("PartnerCaseProgram", fields: [program_id], references: [id])
+  communications      Communication[] @relation("CommunicationCase")
+  flags               CaseFlag[]      @relation("CaseFlagCase")
+  referrals           Referral[]      @relation("ReferralCase")
+  status_history      StatusHistory[] @relation("StatusHistoryCase")
+
+  @@index([mother_id])
+  @@index([caseworker_id])
+  @@index([program_id])
+  @@index([application_id])
+  @@map("cases")
+}
+
+model CaseOutcome {
+  id                 String            @id @default(uuid()) @db.Uuid
+  case_id            String            @db.Uuid
+  result             CaseOutcomeResult
+  denial_reason      String?
+  benefit_amount_usd Decimal?          @db.Decimal(12, 2)
+  first_benefit_date DateTime?         @db.Date
+  decided_at         DateTime?         @db.Timestamptz
+  recorded_by        String?           @db.Uuid
+  notes              String?
+  updated_at         DateTime          @default(now()) @db.Timestamptz
+  case               PartnerCase       @relation("CaseOutcomeCase", fields: [case_id], references: [id], onDelete: Cascade)
+  recorded_by_user   OrgUser?          @relation("CaseOutcomeRecordedBy", fields: [recorded_by], references: [id])
+
+  @@index([case_id])
+  @@map("case_outcomes")
+}
+
+model CaseworkerMetric {
+  id                   String  @id @default(uuid()) @db.Uuid
+  caseworker_id        String  @db.Uuid
+  org_id               String  @db.Uuid
+  period               String
+  active_case_count    Int     @default(0)
+  completion_rate      Decimal? @db.Decimal(5, 2)
+  avg_response_hours   Decimal? @db.Decimal(8, 2)
+  caseload_utilization Decimal? @db.Decimal(5, 2)
+  computed_at          DateTime @default(now()) @db.Timestamptz
+  updated_at           DateTime @default(now()) @db.Timestamptz
+  caseworker           OrgUser  @relation("CaseworkerMetricCaseworker", fields: [caseworker_id], references: [id], onDelete: Cascade)
+
+  @@index([caseworker_id])
+  @@index([org_id])
+  @@map("caseworker_metrics")
+}
+
+model OrgMetricsSnapshot {
+  id                         String   @id @default(uuid()) @db.Uuid
+  org_id                     String   @db.Uuid
+  period                     String
+  mothers_served             Int      @default(0)
+  benefits_unlocked_usd      Decimal? @db.Decimal(14, 2)
+  submission_rate            Decimal? @db.Decimal(5, 2)
+  approval_rate              Decimal? @db.Decimal(5, 2)
+  renewal_compliance_rate    Decimal? @db.Decimal(5, 2)
+  avg_intake_to_benefit_days Decimal? @db.Decimal(8, 2)
+  computed_at                DateTime @default(now()) @db.Timestamptz
+  updated_at                 DateTime @default(now()) @db.Timestamptz
+
+  @@index([org_id])
+  @@map("org_metrics_snapshots")
+}
+
+model CaseDeadline {
+  id            String      @id @default(uuid()) @db.Uuid
+  case_id       String      @db.Uuid
+  type          String
+  due_date      DateTime    @db.Date
+  is_resolved   Boolean     @default(false)
+  alert_sent_at DateTime?   @db.Timestamptz
+  notes         String?
+  updated_at    DateTime    @default(now()) @db.Timestamptz
+  case          PartnerCase @relation("CaseDeadlineCase", fields: [case_id], references: [id], onDelete: Cascade)
+
+  @@index([case_id])
+  @@map("case_deadlines")
+}
+
+model CaseDocument {
+  id            String               @id @default(uuid()) @db.Uuid
+  case_id       String               @db.Uuid
+  doc_type      String
+  file_url      String
+  uploaded_at   DateTime             @default(now()) @db.Timestamptz
+  expiry_date   DateTime?            @db.Date
+  review_status DocumentReviewStatus @default(pending)
+  reviewed_by   String?              @db.Uuid
+  updated_at    DateTime             @default(now()) @db.Timestamptz
+  case          PartnerCase          @relation("CaseDocumentCase", fields: [case_id], references: [id], onDelete: Cascade)
+  reviewer      OrgUser?             @relation("CaseDocumentReviewer", fields: [reviewed_by], references: [id])
+
+  @@index([case_id])
+  @@map("case_documents")
+}
+
+model CaseFlag {
+  id              String      @id @default(uuid()) @db.Uuid
+  case_id         String      @db.Uuid
+  flagged_by      String?     @db.Uuid
+  reason          String
+  status          FlagStatus  @default(open)
+  created_at      DateTime    @default(now()) @db.Timestamptz
+  resolved_at     DateTime?   @db.Timestamptz
+  updated_at      DateTime    @default(now()) @db.Timestamptz
+  case            PartnerCase @relation("CaseFlagCase", fields: [case_id], references: [id], onDelete: Cascade)
+  flagged_by_user OrgUser?    @relation("CaseFlagFlaggedBy", fields: [flagged_by], references: [id])
+
+  @@index([case_id])
+  @@map("flags")
+}
+
+model Communication {
+  id              String                      @id @default(uuid()) @db.Uuid
+  case_id         String                      @db.Uuid
+  sent_by         String?                     @db.Uuid
+  type            String
+  channel         CommunicationChannel
+  message         String
+  sent_at         DateTime?                   @db.Timestamptz
+  responded_at    DateTime?                   @db.Timestamptz
+  delivery_status CommunicationDeliveryStatus @default(pending)
+  updated_at      DateTime                    @default(now()) @db.Timestamptz
+  case            PartnerCase                 @relation("CommunicationCase", fields: [case_id], references: [id], onDelete: Cascade)
+  sent_by_user    OrgUser?                    @relation("CommunicationSentBy", fields: [sent_by], references: [id])
+
+  @@index([case_id])
+  @@map("communications")
+}
+
+model Referral {
+  id               String         @id @default(uuid()) @db.Uuid
+  case_id          String         @db.Uuid
+  from_org_id      String         @db.Uuid
+  to_org_id        String         @db.Uuid
+  referred_by      String?        @db.Uuid
+  status           ReferralStatus @default(pending)
+  outcome          ReferralOutcome?
+  responded_at     DateTime?      @db.Timestamptz
+  notes            String?
+  created_at       DateTime       @default(now()) @db.Timestamptz
+  updated_at       DateTime       @default(now()) @db.Timestamptz
+  case             PartnerCase    @relation("ReferralCase", fields: [case_id], references: [id], onDelete: Cascade)
+  referred_by_user OrgUser?       @relation("ReferralReferredBy", fields: [referred_by], references: [id])
+
+  @@index([case_id])
+  @@index([from_org_id])
+  @@index([to_org_id])
+  @@map("referrals")
+}
+
+model StatusHistory {
+  id              String      @id @default(uuid()) @db.Uuid
+  case_id         String      @db.Uuid
+  changed_by      String?     @db.Uuid
+  old_status      String?
+  new_status      String
+  changed_at      DateTime    @default(now()) @db.Timestamptz
+  notes           String?
+  updated_at      DateTime    @default(now()) @db.Timestamptz
+  case            PartnerCase @relation("StatusHistoryCase", fields: [case_id], references: [id], onDelete: Cascade)
+  changed_by_user OrgUser?    @relation("StatusHistoryChangedBy", fields: [changed_by], references: [id])
+
+  @@index([case_id])
+  @@map("status_history")
+}
+
+// ─────────────────────────────────────────────────────────────
+// NEW ENUMS FOR PARTNER PORTAL
+// ─────────────────────────────────────────────────────────────
+
+enum OrgUserRole {
+  admin
+  caseworker
+}
+
+enum EnrollmentStatus {
+  enrolled
+  pending
+  waitlisted
+  inactive
+}
+
+enum CaseOutcomeResult {
+  approved
+  denied
+}
+
+enum DocumentReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum FlagStatus {
+  open
+  resolved
+  dismissed
+}
+
+enum CommunicationChannel {
+  email
+  sms
+  portal
+}
+
+enum CommunicationDeliveryStatus {
+  pending
+  sent
+  delivered
+  failed
+}
+
+enum ReferralStatus {
+  pending
+  accepted
+  declined
+}
+
+enum ReferralOutcome {
+  success
+  fail
+}
+
+// ─────────────────────────────────────────────────────────────
+// ADDITIONAL MODELS & ENUMS FROM CLONE FOR BILLING/SUBMISSIONS
+// ─────────────────────────────────────────────────────────────
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  user_id                String             @db.Uuid
+  stripe_customer_id     String?
+  stripe_subscription_id String?            @unique
+  plan                   UserPlan
+  status                 SubscriptionStatus @default(active)
+  current_period_start   DateTime?          @db.Timestamptz(6)
+  current_period_end     DateTime?          @db.Timestamptz(6)
+  cancel_at_period_end   Boolean            @default(false)
+  created_at             DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime           @updatedAt @db.Timestamptz(6)
+  payments               Payment[]
+  user                   User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([stripe_subscription_id])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id                       String        @id @default(uuid()) @db.Uuid
+  user_id                  String        @db.Uuid
+  subscription_id          String?       @db.Uuid
+  stripe_payment_intent_id String?       @unique
+  amount                   Int
+  currency                 String        @default("usd")
+  status                   PaymentStatus @default(pending)
+  created_at               DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime      @default(now()) @db.Timestamptz(6)
+  subscription             Subscription? @relation(fields: [subscription_id], references: [id])
+  user                     User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([subscription_id])
+  @@map("payments")
+}
+
+model BillingEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  user_id         String?  @db.Uuid
+  event_type      String
+  stripe_event_id String   @unique
+  payload         Json
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  user            User?    @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("billing_events")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  token      String   @unique
+  user_id    String   @db.Uuid
+  expires_at DateTime @db.Timestamptz(6)
+  revoked    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model ProgramQuarterDueDate {
+  id             String                @id @default(uuid()) @db.Uuid
+  program_id     String
+  year           Int
+  quarter        String
+  due_dates_json Json                  @default("[]")
+  source         QuarterDueDateSource?
+  created_at     DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime              @updatedAt @db.Timestamptz(6)
+  program        BenefitProgram        @relation(fields: [program_id], references: [id], onDelete: Cascade)
+
+  @@unique([program_id, year, quarter])
+  @@index([program_id])
+  @@index([year])
+  @@map("program_quarter_due_dates")
+}
+
+model ApplicationSubmission {
+  id               String        @id @default(uuid()) @db.Uuid
+  application_id   String        @db.Uuid
+  user_id          String        @db.Uuid
+  generated_pdf_id String?       @db.Uuid
+  document_ids     String[]      @default([])
+  submitted_at     DateTime      @default(now()) @db.Timestamptz(6)
+  application      Application   @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  generated_pdf    GeneratedPdf? @relation(fields: [generated_pdf_id], references: [id], onDelete: SetNull)
+  user             User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([application_id])
+  @@index([user_id])
+  @@map("application_submissions")
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  incomplete
+  trialing
+  unpaid
+}
+
+enum PaymentStatus {
+  succeeded
+  failed
+  pending
+}
+
+enum QuarterDueDateSource {
+  GOVT
+  CALCULATED
 }

@@ -44,4 +44,13 @@ export class UserController {
       next(error);
     }
   }
+
+  async listCounselors(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const counselors = await userService.listCounselors();
+      res.status(200).json({ success: true, data: counselors });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

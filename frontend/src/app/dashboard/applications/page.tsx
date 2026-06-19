@@ -340,7 +340,7 @@ export default function ApplicationsPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-b-2xl">
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3 rounded-b-2xl">
               <Button 
                 variant="outline" 
                 onClick={closePdfModal}
@@ -349,13 +349,13 @@ export default function ApplicationsPage() {
                 Close
               </Button>
               {pdfModal.pdfId && (
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 ml-auto">
                   <Button
                     variant="outline"
                     onClick={() => viewPdf(pdfModal.pdfId!)}
                     disabled={!!isViewing || !!isDownloading}
                     loading={isViewing === pdfModal.pdfId}
-                    className="w-full sm:w-auto whitespace-nowrap"
+                    className="flex-1 sm:flex-none whitespace-nowrap"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
                     View PDF
@@ -364,7 +364,7 @@ export default function ApplicationsPage() {
                     onClick={() => downloadPdf(pdfModal.pdfId!, pdfModal.programName)}
                     disabled={!!isViewing || !!isDownloading}
                     loading={isDownloading === pdfModal.pdfId}
-                    className="w-full sm:w-auto whitespace-nowrap px-2.5"
+                    className="flex-1 sm:flex-none whitespace-nowrap px-2.5"
                   >
                     <Download className="w-4 h-4 mr-1.5" />
                     Download PDF

@@ -97,6 +97,32 @@ export class ApplicationsService {
       },
     });
 
+    // Link matching unlinked documents to this newly created application
+    try {
+      const { getProgramRequirements } = require('../pdf/program-requirements.data');
+      const requirements = getProgramRequirements(program.name);
+      if (requirements) {
+        const docTypesToLink = [
+          ...requirements.required_documents,
+          ...requirements.optional_documents,
+        ];
+        if (docTypesToLink.length > 0) {
+          await prisma.document.updateMany({
+            where: {
+              user_id: userId,
+              application_id: null,
+              document_type: { in: docTypesToLink },
+            },
+            data: {
+              application_id: application.id,
+            },
+          });
+        }
+      }
+    } catch (linkErr: any) {
+      console.error(`Failed to auto-link documents for application ${application.id}:`, linkErr.message);
+    }
+
     // Refetch the application with its relations to include generated_pdfs
     const fullApplication = await prisma.application.findUnique({
       where: { id: application.id },

@@ -3,13 +3,17 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CreditCard, Check, ArrowRight, Zap, Shield, Heart } from "lucide-react";
+import { CreditCard, Check, ArrowRight, Zap, Shield, Heart, Lock, Eye, EyeOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { PlanBadge } from "@/components/ui/Badge";
 import { useAuthStore } from "@/store/auth.store";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 const plans = [
   {
@@ -50,10 +54,45 @@ const plans = [
   },
 ];
 
+const changePasswordSchema = z.object({
+  current_password: z.string().min(1, "Current password is required"),
+  new_password: z.string().min(8, "Password must be at least 8 characters"),
+  confirm_password: z.string()
+}).refine((data) => data.new_password === data.confirm_password, {
+  message: "Passwords do not match",
+  path: ["confirm_password"]
+});
+
+type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
+
 export default function SettingsPage() {
   const { user } = useAuthStore();
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [pwdError, setPwdError] = useState("");
+  const [pwdSuccess, setPwdSuccess] = useState("");
+
+  const { register: registerPwd, handleSubmit: handlePwdSubmit, reset: resetPwd, formState: { errors: pwdErrors, isSubmitting: pwdSubmitting } } = useForm<ChangePasswordForm>({
+    resolver: zodResolver(changePasswordSchema)
+  });
+
+  const onPasswordChange = async (data: ChangePasswordForm) => {
+    setPwdError("");
+    setPwdSuccess("");
+    try {
+      await api.put("/api/auth/password", {
+        current_password: data.current_password,
+        new_password: data.new_password
+      });
+      setPwdSuccess("Password updated successfully");
+      resetPwd();
+    } catch (err: any) {
+      setPwdError(err.response?.data?.error?.message || "Failed to update password");
+    }
+  };
 
   const { data: billing } = useQuery({
     queryKey: ["billing-status"],
@@ -199,6 +238,81 @@ export default function SettingsPage() {
           );
         })}
       </div>
+
+      {/* Change Password */}
+      <h2 className="font-display font-semibold text-xl text-on-surface mb-4">
+        Security & Password
+      </h2>
+      <Card className="mb-8" padding="lg">
+        <form onSubmit={handlePwdSubmit(onPasswordChange)} className="max-w-md space-y-5" noValidate>
+          {pwdError && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+              {pwdError}
+            </div>
+          )}
+          {pwdSuccess && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+              {pwdSuccess}
+            </div>
+          )}
+
+          <Input
+            label="Current Password"
+            type={showCurrentPassword ? "text" : "password"}
+            placeholder="Enter current password"
+            leftIcon={<Lock className="w-4 h-4" />}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword((prev) => !prev)}
+                className="hover:text-primary-500 transition-colors"
+              >
+                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            }
+            error={pwdErrors.current_password?.message}
+            {...registerPwd("current_password")}
+          />
+
+          <Input
+            label="New Password"
+            type={showNewPassword ? "text" : "password"}
+            placeholder="Enter new password"
+            leftIcon={<Lock className="w-4 h-4" />}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((prev) => !prev)}
+                className="hover:text-primary-500 transition-colors"
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            }
+            error={pwdErrors.new_password?.message}
+            {...registerPwd("new_password")}
+          />
+
+          <Input
+            label="Confirm New Password"
+            type={showNewPassword ? "text" : "password"}
+            placeholder="Confirm new password"
+            leftIcon={<Lock className="w-4 h-4" />}
+            error={pwdErrors.confirm_password?.message}
+            {...registerPwd("confirm_password")}
+          />
+
+          <Button
+            type="submit"
+            variant="primary"
+            loading={pwdSubmitting}
+            className="w-full sm:w-auto"
+          >
+            Update Password
+          </Button>
+        </form>
+      </Card>
 
       {/* Security Note */}
       <Card className="bg-surface-container-low" glass={false}>

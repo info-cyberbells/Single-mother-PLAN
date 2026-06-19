@@ -104,10 +104,9 @@ export function truncateText(text: string, maxLen: number): string {
 
 export function getInitials(name?: string | null): string {
   if (!name) return "?";
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+  const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, "");
+  const parts = cleanName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }

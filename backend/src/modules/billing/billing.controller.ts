@@ -8,8 +8,56 @@ export class BillingController {
   async checkout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const session = await billingService.createCheckoutSession(req.user.id, req.body.plan);
+      const session = await billingService.createCheckoutSession(
+        req.user.id,
+        req.body.plan,
+        req.body.interval
+      );
       res.status(200).json({ success: true, data: session });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async activateCommunity(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const subscription = await billingService.activateCommunityPlan(req.user.id);
+      res.status(200).json({ success: true, data: { plan: 'community', subscription } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async upgrade(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const result = await billingService.upgradeSubscription(
+        req.user.id,
+        req.body.plan,
+        req.body.interval
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancel(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const result = await billingService.cancelSubscription(req.user.id);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async reactivate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const result = await billingService.reactivateSubscription(req.user.id);
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -44,8 +92,8 @@ export class BillingController {
     }
 
     try {
-      await billingService.handleWebhook(signature, req.body);
-      res.status(200).json({ received: true });
+      const result = await billingService.handleWebhook(signature, req.body);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

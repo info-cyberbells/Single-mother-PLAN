@@ -33,6 +33,7 @@ import { formatCurrency, getConfidenceColor } from "@/lib/utils";
 export default function BenefitsPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [scopeFilter, setScopeFilter] = useState("all");
   const [showEmails, setShowEmails] = useState(false);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<any>(null);
@@ -69,11 +70,21 @@ export default function BenefitsPage() {
 
   const filtered = (results || []).filter((r: any) => {
     const matchesFilter = filter === "all" || r.status === filter;
+    
+    let matchesScope = true;
+    if (scopeFilter === "federal") {
+      const fedOrState = (r.program?.federal_or_state || "").toLowerCase();
+      matchesScope = fedOrState.includes("federal") && !fedOrState.includes("state");
+    } else if (scopeFilter === "state") {
+      const fedOrState = (r.program?.federal_or_state || "").toLowerCase();
+      matchesScope = fedOrState.includes("state") || !!r.program?.state_code;
+    }
+
     const matchesSearch =
       !search ||
       r.program?.name?.toLowerCase().includes(search.toLowerCase()) ||
       r.program?.agency?.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesScope && matchesSearch;
   });
 
   const filters = [
@@ -164,6 +175,15 @@ export default function BenefitsPage() {
               {f.label}
             </button>
           ))}
+          <select
+            value={scopeFilter}
+            onChange={(e) => setScopeFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-outline-variant/30 bg-white text-xs font-semibold text-on-surface-variant hover:bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer"
+          >
+            <option value="all">All Scopes</option>
+            <option value="federal">Federal Only</option>
+            <option value="state">State Only</option>
+          </select>
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-outline-variant/30 bg-white text-sm">
             <input
               type="checkbox"
@@ -356,7 +376,7 @@ export default function BenefitsPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-b-2xl">
+            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3 rounded-b-2xl">
               <Button 
                 variant="outline" 
                 onClick={closePdfModal}
@@ -365,13 +385,13 @@ export default function BenefitsPage() {
                 Close
               </Button>
               {pdfModal.pdfId && (
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 ml-auto">
                   <Button
                     variant="outline"
                     onClick={() => viewPdf(pdfModal.pdfId!)}
                     disabled={!!isViewing || !!isDownloading}
                     loading={isViewing === pdfModal.pdfId}
-                    className="w-full sm:w-auto whitespace-nowrap"
+                    className="flex-1 sm:flex-none whitespace-nowrap"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
                     View PDF
@@ -380,7 +400,7 @@ export default function BenefitsPage() {
                     onClick={() => downloadPdf(pdfModal.pdfId!, pdfModal.programName)}
                     disabled={!!isViewing || !!isDownloading}
                     loading={isDownloading === pdfModal.pdfId}
-                    className="w-full sm:w-auto whitespace-nowrap px-2.5"
+                    className="flex-1 sm:flex-none whitespace-nowrap px-2.5"
                   >
                     <Download className="w-4 h-4 mr-1.5" />
                     Download PDF

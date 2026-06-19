@@ -191,6 +191,7 @@ function DocumentsContent() {
   const router = useRouter();
   const typeParam = searchParams.get("type");
   const redirectParam = searchParams.get("redirect");
+  const applicationIdParam = searchParams.get("applicationId") || searchParams.get("application_id");
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -256,6 +257,9 @@ function DocumentsContent() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("document_type", docTypeToUpload);
+    if (applicationIdParam) {
+      formData.append("application_id", applicationIdParam);
+    }
     try {
       await api.post("/api/documents/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },

@@ -237,4 +237,16 @@ export class UserService {
       update: data,
     });
   }
+
+  async listCounselors() {
+    return prisma.user.findMany({
+      where: { role: 'counselor', status: 'active' },
+      select: {
+        id: true,
+        full_name: true,
+        email: true,
+        profile_picture: true,
+      }
+    });
+  }
 }

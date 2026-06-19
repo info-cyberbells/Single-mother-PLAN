@@ -12,6 +12,23 @@ export const createClient = async (request: NextRequest) => {
     },
   });
 
+  // Check if this is a background prefetch request from Next.js router
+  const isPrefetch =
+    request.headers.get("x-next-router-prefetch") ||
+    request.headers.get("purpose") === "prefetch";
+
+  // Check if this is a public route that doesn't need token refresh/auth checks
+  const isPublic =
+    request.nextUrl.pathname === "/" ||
+    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/register") ||
+    request.nextUrl.pathname.startsWith("/auth");
+
+  // OPTIMIZATION: Skip expensive session refresh database queries for prefetch/public requests
+  if (isPrefetch || isPublic) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
     supabaseUrl!,
     supabaseKey!,

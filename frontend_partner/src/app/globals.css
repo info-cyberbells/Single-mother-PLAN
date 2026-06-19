@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    --primary: #4d41df;
+    --primary-light: #7a71ff;
+    --secondary: #674bb5;
+    --background: #fbf8fc;
+    --surface: #ffffff;
+    --on-surface: #1b1b1e;
+    --on-surface-variant: #464555;
+    --outline: #777587;
+    --outline-variant: #c7c4d8;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface font-sans text-on-surface;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-partner-200 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-partner-400;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-partner-200 text-partner-900;
+  }
+}
+
+@layer utilities {
+  /* Shimmer animation for skeletons */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #f0effe 25%,
+      #e3dfff 50%,
+      #f0effe 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite linear;
+  }
+
+  /* Glass card */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/60;
+  }
+
+  /* Sidebar glass card */
+  .sidebar-glass {
+    background: rgba(255, 255, 255, 0.13);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+  }
+
+  /* Focus ring */
+  .focus-partner {
+    @apply focus:outline-none focus:ring-2 focus:ring-partner-400 focus:ring-offset-2;
+  }
+
+  /* Number font */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Gradient text */
+  .text-gradient-partner {
+    background: linear-gradient(135deg, #4d41df, #7a71ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Framer Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

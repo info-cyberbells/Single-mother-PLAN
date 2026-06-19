@@ -42,6 +42,32 @@ export default function UsersPage() {
   const users = data?.data || [];
   const meta = data?.meta;
 
+  const exportToCSV = () => {
+    if (!users || users.length === 0) return;
+    const headers = ["ID", "Name", "Email", "Role", "Plan", "Status", "Joined"];
+    const csvContent = [
+      headers.join(","),
+      ...users.map((u: any) => [
+        u.id, 
+        `"${u.full_name}"`, 
+        `"${u.email}"`, 
+        u.role, 
+        u.plan, 
+        u.status, 
+        `"${formatDate(u.created_at)}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <>
       <TopBar title="User Management" subtitle={`${meta?.total?.toLocaleString() ?? "—"} total registered users`} />
@@ -82,7 +108,7 @@ export default function UsersPage() {
             <option value="counselor">Counselor</option>
           </select>
 
-          <button className="btn-secondary gap-2">
+          <button onClick={exportToCSV} className="btn-secondary gap-2">
             <Download className="w-4 h-4" />
             Export
           </button>
