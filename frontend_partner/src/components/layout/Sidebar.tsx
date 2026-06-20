@@ -13,10 +13,12 @@ import {
   LogOut,
   Building2,
   Users,
+  UsersRound,
   Bell,
   AlertTriangle,
   Sparkles,
   Baby,
+  Activity,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { usePartnerAuthStore } from "@/store/auth.store";
@@ -39,13 +41,17 @@ const NAV = [
   },
   {
     section: "Insights",
-    items: [{ label: "Analytics", href: "/analytics", icon: BarChart3, adminOnly: false }],
+    items: [
+      { label: "Analytics", href: "/analytics", icon: BarChart3, adminOnly: false },
+      { label: "Program Performance", href: "/program-performance", icon: Activity, adminOnly: false },
+    ],
   },
   {
     section: "Workspace",
     items: [
       { label: "Organization", href: "/organization", icon: Building2, adminOnly: true },
       { label: "Team", href: "/team", icon: Users, adminOnly: true },
+      { label: "Team Overview", href: "/team-overview", icon: UsersRound, adminOnly: true },
       { label: "Notifications", href: "/notifications", icon: Bell, adminOnly: false },
       { label: "Settings", href: "/settings", icon: Settings, adminOnly: false },
     ],
