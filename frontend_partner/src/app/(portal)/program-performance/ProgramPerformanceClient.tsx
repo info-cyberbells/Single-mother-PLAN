@@ -23,6 +23,7 @@ import {
   currentQuarter,
   type PeriodValue,
 } from "@/components/dashboard/PeriodTabs";
+import { DataOverlay } from "@/components/dashboard/DashboardLoading";
 import { cn } from "@/lib/utils";
 
 interface ProgramRow {
@@ -32,7 +33,9 @@ interface ProgramRow {
   submitted: number;
   approved: number;
   denied: number;
+  pending: number;
   approval_rate: number;
+  avg_days: number | null;
   trend: "up" | "down" | "flat";
 }
 
@@ -152,8 +155,10 @@ export function ProgramPerformanceClient() {
 
   return (
     <div className="flex-1 p-8 space-y-4">
-      <PeriodTabs value={period} onChange={setPeriod} className={cn(isFetching && "opacity-70")} />
+      <PeriodTabs value={period} onChange={setPeriod} />
 
+      <DataOverlay loading={isFetching}>
+        <div className="space-y-4">
       {/* Highlight cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Card className="p-4 flex items-start gap-3 bg-status-success-bg border-status-success/30">
@@ -211,14 +216,16 @@ export function ProgramPerformanceClient() {
                 <th className="text-right py-2 px-2 font-semibold">Submitted</th>
                 <th className="text-right py-2 px-2 font-semibold">Approved</th>
                 <th className="text-right py-2 px-2 font-semibold">Denied</th>
+                <th className="text-right py-2 px-2 font-semibold">Pending</th>
                 <th className="text-right py-2 px-2 font-semibold">Approval rate</th>
+                <th className="text-right py-2 px-2 font-semibold">Avg days</th>
                 <th className="text-right py-2 px-2 font-semibold">Trend</th>
               </tr>
             </thead>
             <tbody>
               {programs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-text-soft text-sm">
+                  <td colSpan={8} className="py-6 text-center text-text-soft text-sm">
                     No applications recorded for this period.
                   </td>
                 </tr>
@@ -234,6 +241,7 @@ export function ProgramPerformanceClient() {
                   <td className="text-right px-2 tabular-nums">{p.submitted}</td>
                   <td className="text-right px-2 tabular-nums text-status-success">{p.approved}</td>
                   <td className="text-right px-2 tabular-nums text-status-error">{p.denied}</td>
+                  <td className="text-right px-2 tabular-nums text-text-soft">{p.pending}</td>
                   <td className="text-right px-2">
                     <span className={cn("font-bold tabular-nums", rateClass(p.approval_rate))}>
                       {p.approval_rate}%
@@ -244,6 +252,9 @@ export function ProgramPerformanceClient() {
                         style={{ width: `${p.approval_rate}%`, background: rateBg(p.approval_rate) }}
                       />
                     </span>
+                  </td>
+                  <td className="text-right px-2 tabular-nums text-text-mid">
+                    {p.avg_days != null ? p.avg_days : "—"}
                   </td>
                   <td className="text-right px-2">
                     <TrendBadge trend={p.trend} />
@@ -368,6 +379,8 @@ export function ProgramPerformanceClient() {
           </div>
         </Card>
       )}
+        </div>
+      </DataOverlay>
     </div>
   );
 }

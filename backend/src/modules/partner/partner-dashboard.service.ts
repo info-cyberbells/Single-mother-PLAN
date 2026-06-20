@@ -119,6 +119,15 @@ function caseDecision(c: DecisionCase): {
 
 const TERMINAL_STATUSES = new Set(['approved', 'denied', 'rejected', 'closed']);
 
+type TeamSummaryDeltas = {
+  total_active_cases: number;
+  avg_completion: number;
+  avg_response_hours: number | null;
+  renewals_at_risk: number;
+  capacity_used: number;
+  compare_label: string;
+};
+
 export class PartnerDashboardService {
   // ───────────────────────────────────────────────────────────
   // 1. Program Performance Breakdown
@@ -131,43 +140,37 @@ export class PartnerDashboardService {
 
     // Quarter filter on the case rows; FY = whole calendar year.
     const quarterFilter = isFy ? {} : { quarter };
+    const prev = isFy ? null : previousQuarter(quarter, year);
 
-    const cases = await prisma.partnerCase.findMany({
-      where: { ...caseListWhere(ctx), ...quarterFilter },
-      select: {
-        program_id: true,
-        status: true,
-        intake_date: true,
-        updated_at: true,
-        program: { select: { id: true, name: true } },
-        outcomes: {
-          orderBy: { decided_at: 'desc' },
-          take: 1,
-          select: { result: true, denial_reason: true, decided_at: true },
-        },
+    const caseSelect = {
+      program_id: true,
+      status: true,
+      intake_date: true,
+      updated_at: true,
+      program: { select: { id: true, name: true } },
+      outcomes: {
+        orderBy: { decided_at: 'desc' as const },
+        take: 1,
+        select: { result: true, denial_reason: true, decided_at: true },
       },
-    });
+    };
 
-    // Previous quarter (for per-program trend) — skipped for FY view.
-    let prevRates: Record<string, number> = {};
-    if (!isFy) {
-      const prev = previousQuarter(quarter, year);
-      const prevCases = await prisma.partnerCase.findMany({
-        where: { ...caseListWhere(ctx), quarter: prev.quarter },
-        select: {
-          program_id: true,
-          status: true,
-          intake_date: true,
-          updated_at: true,
-          outcomes: {
-            orderBy: { decided_at: 'desc' },
-            take: 1,
-            select: { result: true, denial_reason: true, decided_at: true },
-          },
-        },
-      });
-      prevRates = this.ratesByProgram(prevCases);
-    }
+    // Fetch current + previous-quarter cases concurrently to cut latency
+    const [cases, prevCases] = await Promise.all([
+      prisma.partnerCase.findMany({
+        where: { ...caseListWhere(ctx), ...quarterFilter },
+        select: caseSelect,
+      }),
+      prev
+        ? prisma.partnerCase.findMany({
+            where: { ...caseListWhere(ctx), quarter: prev.quarter },
+            select: caseSelect,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    // Previous quarter rates (for per-program trend) — empty for FY view.
+    const prevRates: Record<string, number> = prev ? this.ratesByProgram(prevCases) : {};
 
     // Aggregate by program
     type Agg = {
@@ -176,6 +179,8 @@ export class PartnerDashboardService {
       submitted: number;
       approved: number;
       denied: number;
+      daysSum: number;
+      daysCount: number;
     };
     const byProgram = new Map<string, Agg>();
     const denialReasons = new Map<string, { count: number; programs: Set<string> }>();
@@ -190,7 +195,15 @@ export class PartnerDashboardService {
       const pid = c.program_id;
       const agg =
         byProgram.get(pid) ??
-        { program_id: pid, name: c.program?.name ?? pid, submitted: 0, approved: 0, denied: 0 };
+        {
+          program_id: pid,
+          name: c.program?.name ?? pid,
+          submitted: 0,
+          approved: 0,
+          denied: 0,
+          daysSum: 0,
+          daysCount: 0,
+        };
       agg.submitted++;
       totalSubmitted++;
 
@@ -211,6 +224,8 @@ export class PartnerDashboardService {
       if (d.daysToDecision != null) {
         decisionDaysSum += d.daysToDecision;
         decisionDaysCount++;
+        agg.daysSum += d.daysToDecision;
+        agg.daysCount++;
       }
 
       byProgram.set(pid, agg);
@@ -232,7 +247,9 @@ export class PartnerDashboardService {
           submitted: a.submitted,
           approved: a.approved,
           denied: a.denied,
+          pending: Math.max(0, a.submitted - a.approved - a.denied),
           approval_rate: approvalRate,
+          avg_days: a.daysCount > 0 ? Math.round(a.daysSum / a.daysCount) : null,
           trend,
         };
       })
@@ -264,6 +281,7 @@ export class PartnerDashboardService {
         submitted: totalSubmitted,
         approved: totalApproved,
         denied: totalDenied,
+        pending: Math.max(0, totalSubmitted - totalApproved - totalDenied),
         decided: totalDecided,
         approval_rate: overallRate,
         avg_days: avgDays,
@@ -312,11 +330,62 @@ export class PartnerDashboardService {
     const rawQuarter = (quarterInput ?? currentQuarter()).toUpperCase();
     const isFy = rawQuarter === 'FY';
     const quarter = isFy ? currentQuarter() : rawQuarter;
-    const quarterFilter = isFy ? {} : { quarter };
 
     const now = new Date();
     const in30Days = new Date(now);
     in30Days.setDate(in30Days.getDate() + 30);
+
+    // Fetch current + previous-quarter cards concurrently to cut latency
+    const prev = isFy ? null : previousQuarter(quarter, year);
+    const [workerCards, prevCards] = await Promise.all([
+      this.computeWorkerCards(ctx, quarter, year, isFy, now, in30Days),
+      prev
+        ? this.computeWorkerCards(ctx, prev.quarter, prev.year, false, now, in30Days)
+        : Promise.resolve(null),
+    ]);
+
+    // Org-level summary
+    const summary = this.summarizeCards(workerCards);
+
+    // Quarter-over-quarter deltas (skipped for FY view)
+    let deltas: TeamSummaryDeltas | null = null;
+    if (prev && prevCards) {
+      const prevSummary = this.summarizeCards(prevCards);
+      deltas = {
+        total_active_cases: summary.total_active_cases - prevSummary.total_active_cases,
+        avg_completion: summary.avg_completion - prevSummary.avg_completion,
+        avg_response_hours:
+          summary.avg_response_hours != null && prevSummary.avg_response_hours != null
+            ? Math.round((summary.avg_response_hours - prevSummary.avg_response_hours) * 10) / 10
+            : null,
+        renewals_at_risk: summary.renewals_at_risk - prevSummary.renewals_at_risk,
+        capacity_used: summary.capacity_used - prevSummary.capacity_used,
+        compare_label: `vs ${prev.quarter}`,
+      };
+    }
+
+    // Suggested rebalancing: overloaded → healthiest worker with a shared program
+    const reassign = this.buildReassignments(workerCards);
+
+    return {
+      quarter: isFy ? 'FY' : quarter,
+      year,
+      period_label: periodLabel(quarter, year, isFy),
+      summary: { ...summary, deltas },
+      workers: workerCards,
+      reassign,
+    };
+  }
+
+  private async computeWorkerCards(
+    ctx: OrgAccessContext,
+    quarter: string,
+    year: number,
+    isFy: boolean,
+    now: Date,
+    in30Days: Date
+  ) {
+    const quarterFilter = isFy ? {} : { quarter };
 
     // Caseworkers in the org (admins manage caseworkers; caseworkers see only themselves)
     const workerWhere = isOrgAdmin(ctx)
@@ -362,7 +431,7 @@ export class PartnerDashboardService {
 
     const DEFAULT_CAPACITY = 8;
 
-    const workerCards = workers.map((w) => {
+    return workers.map((w) => {
       const metric = w.caseworker_metrics[0];
       const capacity = w.caseload_capacity ?? DEFAULT_CAPACITY;
 
@@ -442,37 +511,34 @@ export class PartnerDashboardService {
         alerts,
       };
     });
+  }
 
-    // Org-level summary
-    const totalActive = workerCards.reduce((s, w) => s + w.active_cases, 0);
-    const totalCapacity = workerCards.reduce((s, w) => s + w.capacity, 0);
-    const avgCompletion = workerCards.length
-      ? Math.round(workerCards.reduce((s, w) => s + w.completion, 0) / workerCards.length)
+  private summarizeCards(
+    cards: Array<{
+      active_cases: number;
+      capacity: number;
+      completion: number;
+      response_hours: number | null;
+      renewals_due: number;
+      caseload_pct: number;
+    }>
+  ) {
+    const totalActive = cards.reduce((s, w) => s + w.active_cases, 0);
+    const totalCapacity = cards.reduce((s, w) => s + w.capacity, 0);
+    const avgCompletion = cards.length
+      ? Math.round(cards.reduce((s, w) => s + w.completion, 0) / cards.length)
       : 0;
-    const respValues = workerCards.map((w) => w.response_hours).filter((v): v is number => v != null);
+    const respValues = cards.map((w) => w.response_hours).filter((v): v is number => v != null);
     const avgResponse = respValues.length
       ? Math.round((respValues.reduce((a, b) => a + b, 0) / respValues.length) * 10) / 10
       : null;
-    const renewalsAtRisk = workerCards.reduce((s, w) => s + w.renewals_due, 0);
-    const capacityUsed = totalCapacity > 0 ? Math.round((totalActive / totalCapacity) * 100) : 0;
-
-    // Suggested rebalancing: overloaded → healthiest worker with a shared program
-    const reassign = this.buildReassignments(workerCards);
-
     return {
-      quarter: isFy ? 'FY' : quarter,
-      year,
-      period_label: periodLabel(quarter, year, isFy),
-      summary: {
-        total_active_cases: totalActive,
-        avg_completion: avgCompletion,
-        avg_response_hours: avgResponse,
-        renewals_at_risk: renewalsAtRisk,
-        capacity_used: capacityUsed,
-        at_limit: workerCards.filter((w) => w.caseload_pct >= 100).length,
-      },
-      workers: workerCards,
-      reassign,
+      total_active_cases: totalActive,
+      avg_completion: avgCompletion,
+      avg_response_hours: avgResponse,
+      renewals_at_risk: cards.reduce((s, w) => s + w.renewals_due, 0),
+      capacity_used: totalCapacity > 0 ? Math.round((totalActive / totalCapacity) * 100) : 0,
+      at_limit: cards.filter((w) => w.caseload_pct >= 100).length,
     };
   }
 

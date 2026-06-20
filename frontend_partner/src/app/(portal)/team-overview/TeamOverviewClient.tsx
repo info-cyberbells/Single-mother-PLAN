@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -11,6 +11,12 @@ import {
   MessageSquare,
   ArrowLeftRight,
   ArrowRight,
+  Search,
+  Check,
+  CheckCheck,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -20,6 +26,7 @@ import {
   currentQuarter,
   type PeriodValue,
 } from "@/components/dashboard/PeriodTabs";
+import { DataOverlay } from "@/components/dashboard/DashboardLoading";
 import { cn } from "@/lib/utils";
 
 interface Worker {
@@ -58,10 +65,21 @@ interface TeamOverview {
     renewals_at_risk: number;
     capacity_used: number;
     at_limit: number;
+    deltas: {
+      total_active_cases: number;
+      avg_completion: number;
+      avg_response_hours: number | null;
+      renewals_at_risk: number;
+      capacity_used: number;
+      compare_label: string;
+    } | null;
   };
   workers: Worker[];
   reassign: Reassign[];
 }
+
+type SortKey = "capacity" | "cases" | "completion" | "response";
+type StatusFilter = "all" | "overloaded" | "at-risk" | "healthy";
 
 async function fetchTeamOverview(p: PeriodValue): Promise<TeamOverview> {
   const res = await api.get("/api/partner/dashboard/team-overview", {
@@ -90,6 +108,10 @@ export function TeamOverviewClient() {
     quarter: currentQuarter(),
     year: new Date().getFullYear(),
   });
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortBy, setSortBy] = useState<SortKey>("capacity");
+  const [appliedTransfers, setAppliedTransfers] = useState<Set<number>>(new Set());
 
   const { data, isFetching } = useQuery({
     queryKey: ["team-overview", period.quarter, period.year],
@@ -99,34 +121,110 @@ export function TeamOverviewClient() {
   });
 
   const s = data?.summary;
+  const d = s?.deltas ?? null;
   const workers = data?.workers ?? [];
   const maxCases = Math.max(10, ...workers.map((w) => Math.max(w.active_cases, w.capacity)));
 
+  const displayWorkers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = workers.filter((w) => {
+      const matchesSearch = !q || w.full_name.toLowerCase().includes(q) || w.name.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === "all" || w.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+    const sorters: Record<SortKey, (a: Worker, b: Worker) => number> = {
+      capacity: (a, b) => b.caseload_pct - a.caseload_pct,
+      cases: (a, b) => b.active_cases - a.active_cases,
+      completion: (a, b) => b.completion - a.completion,
+      response: (a, b) => (b.response_hours ?? 0) - (a.response_hours ?? 0),
+    };
+    return [...filtered].sort(sorters[sortBy]);
+  }, [workers, search, statusFilter, sortBy]);
+
+  const allApplied = data ? data.reassign.length > 0 && appliedTransfers.size >= data.reassign.length : false;
+
   return (
     <div className="flex-1 p-8 space-y-4">
-      <PeriodTabs value={period} onChange={setPeriod} className={cn(isFetching && "opacity-70")} />
+      <PeriodTabs value={period} onChange={setPeriod} />
 
+      <DataOverlay loading={isFetching}>
+        <div className="space-y-4">
       {/* Stat row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Stat label="Total active cases" value={s?.total_active_cases ?? 0} />
-        <Stat label="Avg completion" value={`${s?.avg_completion ?? 0}%`} valueClass="text-status-success" />
+        <Stat label="Total active cases" value={s?.total_active_cases ?? 0} delta={d?.total_active_cases} deltaLabel={d?.compare_label} />
+        <Stat label="Avg completion" value={`${s?.avg_completion ?? 0}%`} valueClass="text-status-success" delta={d?.avg_completion} deltaUnit="pts" deltaLabel={d?.compare_label} />
         <Stat
           label="Avg response"
           value={s?.avg_response_hours != null ? `${s.avg_response_hours}h` : "—"}
           valueClass="text-status-warning"
+          delta={d?.avg_response_hours ?? undefined}
+          deltaUnit="h"
+          deltaLabel={d?.compare_label}
+          higherIsWorse
         />
-        <Stat label="Renewals at risk" value={s?.renewals_at_risk ?? 0} valueClass="text-status-error" />
+        <Stat label="Renewals at risk" value={s?.renewals_at_risk ?? 0} valueClass="text-status-error" delta={d?.renewals_at_risk} deltaLabel={d?.compare_label} higherIsWorse />
         <Stat
           label="Capacity used"
           value={`${s?.capacity_used ?? 0}%`}
           valueClass="text-status-warning"
+          delta={d?.capacity_used}
+          deltaUnit="pts"
+          deltaLabel={d?.compare_label}
+          higherIsWorse
           sub={s?.at_limit ? `${s.at_limit} at limit` : undefined}
         />
+      </div>
+
+      {/* Filter & sort toolbar */}
+      <div className="flex items-center gap-2 flex-wrap bg-white border border-surface-border rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary-subtle border border-surface-border">
+          <Search className="w-3.5 h-3.5 text-text-soft" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search caseworker…"
+            className="bg-transparent text-xs outline-none w-36 placeholder:text-text-soft text-text-dark"
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {(["all", "overloaded", "at-risk", "healthy"] as StatusFilter[]).map((sf) => (
+            <button
+              key={sf}
+              onClick={() => setStatusFilter(sf)}
+              className={cn(
+                "px-2.5 py-1.5 rounded-full text-[11px] font-semibold capitalize transition-colors border",
+                statusFilter === sf
+                  ? "bg-partner-500 text-white border-partner-500"
+                  : "bg-white text-partner-700 border-surface-border hover:bg-partner-50"
+              )}
+            >
+              {sf === "all" ? "All" : sf.replace("-", " ")}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <span className="text-[11px] text-text-soft">Sort by</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortKey)}
+            className="text-xs font-semibold text-partner-700 bg-white border border-surface-border rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+          >
+            <option value="capacity">Capacity used</option>
+            <option value="cases">Case count</option>
+            <option value="completion">Completion rate</option>
+            <option value="response">Response time</option>
+          </select>
+        </div>
       </div>
 
       {/* Caseworker cards */}
       <div className="text-[11px] font-bold uppercase tracking-wide text-partner-700 pt-1">
         Caseworker cards
+        {displayWorkers.length !== workers.length && (
+          <span className="ml-2 font-medium normal-case text-text-soft">
+            {displayWorkers.length} of {workers.length} shown
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {workers.length === 0 && (
@@ -134,7 +232,12 @@ export function TeamOverviewClient() {
             No caseworkers found for this organization.
           </Card>
         )}
-        {workers.map((w, idx) => {
+        {workers.length > 0 && displayWorkers.length === 0 && (
+          <Card className="p-5 text-sm text-text-soft col-span-full">
+            No caseworkers match the current filters.
+          </Card>
+        )}
+        {displayWorkers.map((w, idx) => {
           const pill = STATUS_PILL[w.status];
           return (
             <motion.div
@@ -311,26 +414,61 @@ export function TeamOverviewClient() {
 
       {/* Suggested rebalancing */}
       <Card className="p-5">
-        <SectionTitle title="Suggested rebalancing" sub="Recommended transfers to reduce overload this period" />
+        <div className="flex items-start justify-between mb-3">
+          <SectionTitle title="Suggested rebalancing" sub="Recommended transfers to reduce overload this period" />
+          {data && data.reassign.length > 0 && (
+            <button
+              onClick={() => setAppliedTransfers(new Set(data.reassign.map((_, i) => i)))}
+              disabled={allApplied}
+              className={cn(
+                "text-[11px] font-semibold px-3 py-1.5 rounded-lg border flex items-center gap-1.5 transition-colors shrink-0",
+                allApplied
+                  ? "bg-status-success-bg text-status-success border-status-success/30 cursor-default"
+                  : "bg-partner-700 text-white border-partner-700 hover:bg-partner-800"
+              )}
+            >
+              {allApplied ? <CheckCheck className="w-3.5 h-3.5" /> : <CheckCheck className="w-3.5 h-3.5" />}
+              {allApplied ? "All applied" : "Apply all"}
+            </button>
+          )}
+        </div>
         {data && data.reassign.length === 0 && (
           <div className="text-sm text-text-soft py-1.5">
             No rebalancing needed — all caseworkers are within capacity this period.
           </div>
         )}
-        {data?.reassign.map((r, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 py-2.5 border-b border-surface-border last:border-0 flex-wrap"
-          >
-            <ReassignSide name={r.from.name} initials={r.from.initials} sub={`${r.from.cases}/${r.from.capacity} cases`} />
-            <ArrowRight className="w-4 h-4 text-partner-300 shrink-0" />
-            <ReassignSide name={r.to.name} initials={r.to.initials} sub={`${r.to.cases}/${r.to.capacity} · ${r.note}`} />
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-partner-100 text-partner-700 font-semibold whitespace-nowrap">
-              −{r.cases} case
-            </span>
-          </div>
-        ))}
+        {data?.reassign.map((r, i) => {
+          const applied = appliedTransfers.has(i);
+          return (
+            <div
+              key={i}
+              className="flex items-center gap-3 py-2.5 border-b border-surface-border last:border-0 flex-wrap"
+            >
+              <ReassignSide name={r.from.name} initials={r.from.initials} sub={`${r.from.cases}/${r.from.capacity} cases`} />
+              <ArrowRight className="w-4 h-4 text-partner-300 shrink-0" />
+              <ReassignSide name={r.to.name} initials={r.to.initials} sub={`${r.to.cases}/${r.to.capacity} · ${r.note}`} />
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-partner-100 text-partner-700 font-semibold whitespace-nowrap">
+                −{r.cases} case
+              </span>
+              <button
+                onClick={() => setAppliedTransfers((prev) => new Set(prev).add(i))}
+                disabled={applied}
+                className={cn(
+                  "text-[11px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors whitespace-nowrap shrink-0",
+                  applied
+                    ? "bg-status-success-bg text-status-success cursor-default"
+                    : "bg-partner-700 text-white hover:bg-partner-800"
+                )}
+              >
+                <Check className="w-3.5 h-3.5" />
+                {applied ? "Applied" : "Apply"}
+              </button>
+            </div>
+          );
+        })}
       </Card>
+        </div>
+      </DataOverlay>
     </div>
   );
 }
@@ -340,16 +478,50 @@ function Stat({
   value,
   valueClass,
   sub,
+  delta,
+  deltaUnit,
+  deltaLabel,
+  higherIsWorse,
 }: {
   label: string;
   value: string | number;
   valueClass?: string;
   sub?: string;
+  delta?: number;
+  deltaUnit?: string;
+  deltaLabel?: string;
+  higherIsWorse?: boolean;
 }) {
+  const hasDelta = delta != null && delta !== 0;
+  const positive = (delta ?? 0) > 0;
+  // "good" colour = green; if higherIsWorse, an increase is bad
+  const good = higherIsWorse ? !positive : positive;
+  const DeltaIcon = positive ? TrendingUp : TrendingDown;
+  const sign = positive ? "+" : "";
+
   return (
     <Card className="p-3.5">
       <div className="text-[11px] text-text-soft mb-1">{label}</div>
       <div className={cn("text-2xl font-extrabold tabular-nums text-text-dark", valueClass)}>{value}</div>
+      {hasDelta ? (
+        <div
+          className={cn(
+            "flex items-center gap-1 text-[11px] font-semibold mt-0.5",
+            good ? "text-status-success" : "text-status-error"
+          )}
+        >
+          <DeltaIcon className="w-3 h-3" />
+          {sign}
+          {Math.abs(delta as number)}
+          {deltaUnit ?? ""}
+          {deltaLabel && <span className="font-normal text-text-soft">{deltaLabel}</span>}
+        </div>
+      ) : delta != null ? (
+        <div className="flex items-center gap-1 text-[11px] text-text-soft mt-0.5">
+          <Minus className="w-3 h-3" />
+          {deltaLabel ?? "no change"}
+        </div>
+      ) : null}
       {sub && <div className="text-[11px] text-text-soft mt-0.5">{sub}</div>}
     </Card>
   );
