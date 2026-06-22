@@ -30,6 +30,7 @@ import partnerCasesRoutes from './modules/partner/partner-cases.routes';
 import partnerDashboardRoutes from './modules/partner/partner-dashboard.routes';
 import partnerDocumentsRoutes from './modules/partner/partner-documents.routes';
 import partnerAlertsRoutes from './modules/partner/partner-alerts.routes';
+import referralsRoutes from './modules/partner/referrals.routes';
 import organizationsRoutes from './modules/partner/organizations.routes';
 import partnerBillingRoutes from './modules/partner/partner-billing.routes';
 
@@ -98,6 +99,7 @@ app.use('/api/partner/cases',        partnerCasesRoutes);
 app.use('/api/partner/dashboard',    partnerDashboardRoutes);
 app.use('/api/partner/documents',    partnerDocumentsRoutes);
 app.use('/api/partner/alerts',       partnerAlertsRoutes);
+app.use('/api/partner/referrals',    referralsRoutes);
 app.use('/api/organizations',        organizationsRoutes);
 app.use('/api/partner/billing',      partnerBillingRoutes);
 
