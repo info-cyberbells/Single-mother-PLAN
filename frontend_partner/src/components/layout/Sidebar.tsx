@@ -19,6 +19,8 @@ import {
   Sparkles,
   Baby,
   Activity,
+  Network,
+  MapPin,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { usePartnerAuthStore } from "@/store/auth.store";
@@ -36,6 +38,8 @@ const NAV = [
       { label: "Mothers", href: "/mothers", icon: Baby, adminOnly: false },
       { label: "Deadline Alerts", href: "/alerts", icon: AlertTriangle, adminOnly: false },
       { label: "Referrals", href: "/referrals", icon: ArrowLeftRight, adminOnly: false },
+      { label: "Referral Network", href: "/referral-network", icon: Network, adminOnly: false },
+      { label: "Partner Directory", href: "/referral-directory", icon: MapPin, adminOnly: false },
       { label: "Documents", href: "/documents", icon: FileText, adminOnly: false },
     ],
   },

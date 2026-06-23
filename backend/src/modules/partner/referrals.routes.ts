@@ -7,6 +7,7 @@ const router = Router();
 const ctrl = withControllerLog(new ReferralsController(), 'partner.referrals');
 
 router.get('/summary', authenticateOrgUser, ctrl.getSummary);
+router.get('/network', authenticateOrgUser, ctrl.network);
 router.get('/target-orgs', authenticateOrgUser, ctrl.targetOrgs);
 router.get('/cases', authenticateOrgUser, ctrl.referableCases);
 router.get('/', authenticateOrgUser, ctrl.list);

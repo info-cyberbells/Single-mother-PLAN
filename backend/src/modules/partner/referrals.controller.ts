@@ -43,6 +43,21 @@ export class ReferralsController {
     }
   }
 
+  async network(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.orgUser) throw new UnauthorizedError('Not authenticated');
+      const ctx = toAccessContext(req.orgUser);
+      const data = await svc.getNetwork(
+        ctx,
+        req.query.quarter as string | undefined,
+        req.query.year ? Number(req.query.year) : undefined
+      );
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async targetOrgs(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.orgUser) throw new UnauthorizedError('Not authenticated');
